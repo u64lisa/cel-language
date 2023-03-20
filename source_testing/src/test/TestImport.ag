@@ -1,0 +1,17 @@
+class YourMom {
+
+    method static whatThis {
+        println("it did the static call OWO");
+    }
+
+}
+
+object MethodHolder2 {
+
+    method static printTest -> any {
+        println("Test what is this owo");
+
+        69
+    }
+
+}

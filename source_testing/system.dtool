@@ -1,0 +1,22 @@
+project.name = "your-project-name"           // needed
+project.version = "your-project-version"     // needed
+project.id = "your-id"                       // needed
+project.main = "hello_world"                       // needed
+
+
+project.tree = "project-tree"                // not needed
+
+development {
+    // development tags
+    // author.name = "username"
+}
+
+depend {
+    // dependencies
+    // resolve "name:version:id" from "local"
+}
+
+plugins {
+    // plugins
+    // resolve "name:version:id" from "local"
+}

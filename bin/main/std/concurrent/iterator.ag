@@ -1,0 +1,25 @@
+class Iterator {
+
+    private iterable: list;
+
+    ingredients(iterable: list) {
+        attribute iterable = iterable;
+    }
+
+    method hasNext -> bool => size(iterable) != 0;
+
+    method next -> any {
+        if (hasNext) {
+            let element = iterable[0];
+
+            remove(iterable, element);
+
+            element
+        }
+
+        null
+    }
+
+    method bin type => "iterator";
+
+}

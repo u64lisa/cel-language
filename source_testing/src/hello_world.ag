@@ -1,0 +1,23 @@
+package "test";
+
+#main HelloWorld;
+
+class Test {
+
+     method uwu() {
+         println("this is a test");
+     }
+
+}
+
+class HelloWorld {
+
+    method static main(args) {
+        println("Hello, world!");
+
+        let test = Test();
+        test.uwu();
+    }
+
+}
+

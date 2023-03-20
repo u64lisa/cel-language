@@ -1,0 +1,11 @@
+package "example";
+
+#main Example;
+
+class Example {
+
+    method static main(arguments) {
+        println("this is a example main...");
+    }
+
+}
