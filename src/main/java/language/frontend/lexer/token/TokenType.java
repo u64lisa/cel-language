@@ -88,12 +88,12 @@ public enum TokenType {
             case AT -> "@";
             case APOSTROPH -> "'";
 
-            case INTEGER -> "int";
-            case FLOAT -> "float";
-            case BYTE -> "byte";
-            case LONG -> "long";
-            case DOUBLE -> "double";
-            case SHORT -> "short";
+            case INTEGER -> "i32";
+            case FLOAT -> "f32";
+            case BYTE -> "i8";
+            case LONG -> "i128";
+            case DOUBLE -> "i64";
+            case SHORT -> "i16";
             case STRING -> "string";
             case BOOLEAN -> "boolean";
 

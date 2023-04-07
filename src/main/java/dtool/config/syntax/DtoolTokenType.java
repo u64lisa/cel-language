@@ -6,12 +6,14 @@ public enum DtoolTokenType {
     DEVELOPMENT_TAG,
     DEPEND_TAG,
     PLUGIN_TAG,
+    MODULE,
 
     RESOLVE,
     FROM,
 
     STRING,
     IDENTIFIER,
+    NUMBER,
 
     EQUALS,
     DOT,

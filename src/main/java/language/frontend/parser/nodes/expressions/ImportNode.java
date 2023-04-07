@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ImportNode extends Node {
-    public final Token fileName;
-    public final Token customName;
+    private final Token fileName;
+    private final Token customName;
 
     public ImportNode(Token name) {
         this.fileName = name;
@@ -43,5 +43,13 @@ public class ImportNode extends Node {
     @Override
     public String visualize() {
         return "import " + fileName.getValue();
+    }
+
+    public Token getFileName() {
+        return fileName;
+    }
+
+    public Token getCustomName() {
+        return customName;
     }
 }

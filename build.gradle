@@ -33,10 +33,31 @@ publishing {
             version = "${version}"
 
             System.out.println("groupId = \"${group}\"\n" +
-                    "            artifactId = \"${rootProject.name}\"\n" +
-                    "            version = \"${version}\"")
+                    "artifactId = \"${rootProject.name}\"\n" +
+                    "version = \"${version}\"")
 
             from components.java
         }
     }
 }
+
+jar {
+    manifest {
+        attributes 'Implementation-Title': 'Gradle Quickstart',
+                'Implementation-Version': version,
+                'Main-Class': 'cli.boot.Bootstrap'
+    }
+
+    from {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+compileJava {
+    options.encoding = "UTF-8"
+}
+

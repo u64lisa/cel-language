@@ -1,5 +1,6 @@
 package language.backend.compiler.bytecode.types.primitives.other;
 
+import language.backend.compiler.bytecode.types.objects.ReferenceType;
 import language.backend.compiler.bytecode.types.primitives.primitive.PrimitiveType;
 import language.frontend.lexer.token.TokenType;
 import language.backend.compiler.bytecode.types.Type;
@@ -22,10 +23,14 @@ public class BooleanType extends PrimitiveType {
 
     @Override
     protected Type operation(TokenType operation, Type other) {
-        if (!(other instanceof BooleanType)) {
+
+        if (!(other instanceof BooleanType) && !(other instanceof ReferenceType referenceType
+                && referenceType.getRef() instanceof BooleanType)) {
             return null;
         }
+
         if (Arrays.asList(VALID_OPS).contains(operation)) {
+
             return INSTANCE;
         }
         return null;

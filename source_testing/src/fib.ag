@@ -1,0 +1,14 @@
+var start = epoch();
+
+println("starting...");
+
+inline fib(x: i128) -> i128 {
+    #optimize;
+    if (x <= 1) return x;
+
+    return fib(x - 1) + fib(x - 2);
+}
+println(fib(47));
+
+var time = |f32| (epoch() - start);
+println(str(time) + " ms");

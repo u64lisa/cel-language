@@ -1,14 +1,17 @@
 package language.backend.compiler.bytecode.types;
 
 import language.backend.compiler.bytecode.ChunkCode;
+import language.backend.compiler.bytecode.types.objects.ReferenceType;
 import language.frontend.lexer.token.TokenType;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public abstract class Type {
+
     public String name;
 
     public Type(final String name) {
@@ -80,5 +83,33 @@ public abstract class Type {
 
     public List<Integer> dumpList() {
         return Arrays.stream(compile()).boxed().collect(Collectors.toList());
+    }
+
+    public boolean matches(final Type... other) {
+        boolean matches = false;
+        if (this instanceof ReferenceType referenceType) {
+            Type reference = referenceType.ref;
+
+            for (Type type : other) {
+                if (type == reference) {
+                    matches = true;
+                    break;
+                }
+            }
+
+        } else {
+            for (Type type : other) {
+                if (type == this) {
+                    matches = true;
+                    break;
+                }
+            }
+        }
+
+        return matches;
+    }
+
+    public String getName() {
+        return name;
     }
 }

@@ -1,6 +1,6 @@
 package language.backend.compiler.bytecode.types.objects;
 
-import language.backend.compiler.bytecode.types.primitives.numbers.IntType;
+import language.backend.compiler.bytecode.types.primitives.numbers.I32Type;
 import language.frontend.lexer.token.TokenType;
 import language.backend.compiler.bytecode.types.Type;
 import language.backend.compiler.bytecode.types.Types;
@@ -28,7 +28,7 @@ public class TupleType extends Type {
 
     @Override
     protected Type operation(TokenType operation, Type other) {
-        if (operation == TokenType.LEFT_BRACKET && other instanceof IntType) {
+        if (operation == TokenType.LEFT_BRACKET && other instanceof I32Type) {
             return Types.ANY;
         }
         return null;

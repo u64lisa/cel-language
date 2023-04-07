@@ -3,6 +3,7 @@ package dtool.config.syntax.utils;
 import java.util.Objects;
 
 public class ImmutableSyntaxImpl implements ISyntaxPos {
+
 	public final Position start;
 	public final Position end;
 	public final String path;

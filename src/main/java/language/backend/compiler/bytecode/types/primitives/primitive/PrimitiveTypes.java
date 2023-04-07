@@ -9,12 +9,12 @@ import language.backend.compiler.bytecode.types.primitives.collection.MapType;
 import language.backend.compiler.bytecode.types.primitives.collection.ListType;
 
 public class PrimitiveTypes {
-    public static final IntType INT = IntType.INSTANCE;
-    public static final FloatType FLOAT = FloatType.INSTANCE;
-    public static final LongType LONG = LongType.INSTANCE;
-    public static final ShortType SHORT = ShortType.INSTANCE;
-    public static final ByteType BYTE = ByteType.INSTANCE;
-    public static final DoubleType DOUBLE = DoubleType.INSTANCE;
+    public static final I32Type INT = I32Type.INSTANCE;
+    public static final F32Type FLOAT = F32Type.INSTANCE;
+    public static final I128Type LONG = I128Type.INSTANCE;
+    public static final I16Type SHORT = I16Type.INSTANCE;
+    public static final I8Type BYTE = I8Type.INSTANCE;
+    public static final I64Type DOUBLE = I64Type.INSTANCE;
 
     public static final BooleanType BOOL = BooleanType.INSTANCE;
     public static final StringType STRING = StringType.INSTANCE;

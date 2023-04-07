@@ -807,7 +807,7 @@ public class Value {
         if (isBool) {
             return "bool";
         } else if (isNumber) {
-            return (number == (long) number) ? "int" : "float";
+            return (number == (long) number) ? "i32" : "f32";
         } else if (isString) {
             return "String";
         } else if (isList) {
@@ -829,7 +829,7 @@ public class Value {
         } else if (isBytes) {
             return "bytearray";
         } else if (isFunc || isClosure || isNativeFunc) {
-            return "function";
+            return "inline";
         } else if (isPattern) {
             return "pattern";
         } else if (isPatternBinding) {

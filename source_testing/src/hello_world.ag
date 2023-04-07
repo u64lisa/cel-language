@@ -1,22 +1,52 @@
 package "test";
 
+import "test|TestImport" as Imported;
+
 #main HelloWorld;
+
+inline generalTest() -> i32 {
+    println("this is a test 1");
+}
 
 class Test {
 
-     method uwu() {
-         println("this is a test");
+     method test() -> i32 {
+         println("this is a test 2");
+         return 1;
      }
 
 }
 
 class HelloWorld {
 
-    method static main(args) {
+    method static main(args: any) -> void {
         println("Hello, world!");
 
-        let test = Test();
-        test.uwu();
+        let testObject = Test();
+        let value = testObject.test();
+
+        generalTest();
+
+        println(type(value) + " uwu " + value);
+
+        let bool1 = 15 + 2 == 17;
+        let bool2 = "test" == "test";
+
+        let combined = bool1 && bool2 && "test" == "test" && 1+2+3 == 6;
+
+        println("value of bool 1: ${bool1}");
+        println("value of bool 2: ${bool2}");
+        println("value of bool combined: ${combined}");
+
+        // global inline from import
+        test();
+
+        // object from import
+        let builderTest = BuilderTest();
+        let owo = builderTest
+            .first()
+            .second();
+
     }
 
 }

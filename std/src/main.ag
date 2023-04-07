@@ -1,0 +1,72 @@
+package "std";
+
+#main Main;
+
+typedef i8: byte;
+typedef i16: short;
+typedef i32: int;
+typedef i64: double;
+typedef i128: long;
+
+typedef f32: float;
+
+compiler<asm> {
+    "_print:
+        push RBP
+        mov RBP, RSP
+        sub RSP, 0x10
+
+        mov RAX, qword [RBP + 0x10]
+        mov qword [RBP - 0x8], RAX
+        mov RAX, qword [RBP + 0x18]
+        mov qword [RBP - 0x10], RAX
+
+        mov rsi, qword [RBP - 0x8]
+        mov rdx, qword [RBP - 0x10]
+        mov rdi, 1
+        mov rax, 1
+        syscall
+
+        mov RSP, RBP
+        pop RBP
+        ret"
+};
+
+macro test (
+   ($name: ident, $pfn_type: ty, ($($param_name: ident : $param_type: ty),*) -> $return_type: ty) => {
+        paste! {
+            ::lazy_static::lazy_static! {
+                static ref [<FN_ $name>]: $pfn_type = unsafe {
+                    let function: $pfn_type = ::std::mem::transmute(get_library().get::<$pfn_type>(concat!(stringify!($name), "\0").as_bytes()).unwrap());
+                    function
+                };
+            }
+
+            #[no_mangle]
+            pub unsafe extern "C" fn $name($($param_name: $param_type),*) -> $return_type {
+                [<FN_ $name>]($($param_name),*)
+            }
+        }
+    }
+);
+
+inline test() -> double => 69.0;
+
+inline test2() -> double {
+    return 69.0;
+}
+
+class Main {
+
+    method static main(arguments: any) -> void {
+        println("Hello, World!");
+        let value = test();
+
+        let value2 = test2();
+
+        println(value);
+        println(value2);
+    }
+
+}
+

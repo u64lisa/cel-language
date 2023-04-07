@@ -10,12 +10,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Disassembler {
-    private File outputFile = Paths.get("./output.txt").toFile();
+    private final File outputFile;
 
     private final List<String> instructions = new ArrayList<>();
 
     public Disassembler(final String id) {
-        this.outputFile = Paths.get("./output-" + id + ".txt").toFile();
+        final File debugFolder = new File("./debug/");
+
+        if (!debugFolder.exists() && !debugFolder.mkdirs())
+            throw new IllegalStateException("Can't create debug folder!");
+
+        this.outputFile = Paths.get("./debug/output-" + id + ".txt").toFile();
     }
 
     public void disassembleChunk(Chunk chunk, String string) {
@@ -32,27 +37,27 @@ public class Disassembler {
 
         int instruction = chunk.code.get(offset);
         switch (instruction) {
-            case OpCode.Return -> {
+            case ByteCodeOpCode.Return -> {
                 return simpleInstruction("OP_RETURN", offset);
             }
-            case OpCode.Pop -> {
+            case ByteCodeOpCode.Pop -> {
                 return simpleInstruction("OP_POP", offset);
             }
-            case OpCode.PatternVars -> {
+            case ByteCodeOpCode.PatternVars -> {
                 return constantInstruction("OP_PATTERN_VARS", chunk, offset);
             }
-            case OpCode.Pattern -> {
+            case ByteCodeOpCode.Pattern -> {
                 int args = chunk.code.get(offset + 1);
                 writeElement(String.format("%-16s %04d%n", "OP_PATTERN", args));
                 return offset + 2 + args;
             }
-            case OpCode.Header -> {
+            case ByteCodeOpCode.Header -> {
                 int constant = chunk.code.get(offset + 1);
                 int args = chunk.code.get(offset + 2);
                 writeElement(String.format("%-16s %04d %04d%n", "OP_HEADER", constant, args));
                 return offset + 3 + args;
             }
-            case OpCode.Destruct -> {
+            case ByteCodeOpCode.Destruct -> {
                 int count = chunk.code.get(offset + 1);
                 if (count == -1) {
                     writeElement(String.format("%-16s %-16s%n", "OP_DESTRUCT", "GLOB"));
@@ -61,160 +66,160 @@ public class Disassembler {
                 writeElement(String.format("%-16s %04d%n", "OP_DESTRUCT", count));
                 return offset + 2 + count;
             }
-            case OpCode.Constant -> {
+            case ByteCodeOpCode.Constant -> {
                 return constantInstruction("OP_CONSTANT", chunk, offset);
             }
-            case OpCode.SetGlobal -> {
+            case ByteCodeOpCode.SetGlobal -> {
                 return constantInstruction("OP_SET_GLOBAL", chunk, offset);
             }
-            case OpCode.GetGlobal -> {
+            case ByteCodeOpCode.GetGlobal -> {
                 return constantInstruction("OP_GET_GLOBAL", chunk, offset);
             }
-            case OpCode.DefineGlobal -> {
+            case ByteCodeOpCode.DefineGlobal -> {
                 return declInstruction("OP_DEFINE_GLOBAL", chunk, offset, false);
             }
-            case OpCode.Add -> {
+            case ByteCodeOpCode.Add -> {
                 return simpleInstruction("OP_ADD", offset);
             }
-            case OpCode.Subtract -> {
+            case ByteCodeOpCode.Subtract -> {
                 return simpleInstruction("OP_SUBTRACT", offset);
             }
-            case OpCode.Multiply -> {
+            case ByteCodeOpCode.Multiply -> {
                 return simpleInstruction("OP_MULTIPLY", offset);
             }
-            case OpCode.Divide -> {
+            case ByteCodeOpCode.Divide -> {
                 return simpleInstruction("OP_DIVIDE", offset);
             }
-            case OpCode.Power -> {
+            case ByteCodeOpCode.Power -> {
                 return simpleInstruction("OP_POWER", offset);
             }
-            case OpCode.Modulo -> {
+            case ByteCodeOpCode.Modulo -> {
                 return simpleInstruction("OP_MODULO", offset);
             }
-            case OpCode.Negate -> {
+            case ByteCodeOpCode.Negate -> {
                 return simpleInstruction("OP_NEGATE", offset);
             }
-            case OpCode.Not -> {
+            case ByteCodeOpCode.Not -> {
                 return simpleInstruction("OP_NOT", offset);
             }
-            case OpCode.Increment -> {
+            case ByteCodeOpCode.Increment -> {
                 return simpleInstruction("OP_INCREMENT", offset);
             }
-            case OpCode.Decrement -> {
+            case ByteCodeOpCode.Decrement -> {
                 return simpleInstruction("OP_DECREMENT", offset);
             }
-            case OpCode.EQUAL -> {
+            case ByteCodeOpCode.EQUAL -> {
                 return simpleInstruction("OP_EQUAL", offset);
             }
-            case OpCode.GreaterThan -> {
+            case ByteCodeOpCode.GreaterThan -> {
                 return simpleInstruction("OP_GREATER_THAN", offset);
             }
-            case OpCode.LessThan -> {
+            case ByteCodeOpCode.LessThan -> {
                 return simpleInstruction("OP_LESS_THAN", offset);
             }
-            case OpCode.SetLocal -> {
+            case ByteCodeOpCode.SetLocal -> {
                 return byteInstruction("OP_SET_LOCAL", chunk, offset);
             }
-            case OpCode.GetLocal -> {
+            case ByteCodeOpCode.GetLocal -> {
                 return byteInstruction("OP_GET_LOCAL", chunk, offset);
             }
-            case OpCode.DefineLocal -> {
+            case ByteCodeOpCode.DefineLocal -> {
                 return declInstruction("OP_DEFINE_LOCAL", chunk, offset, true);
             }
-            case OpCode.MakeVar -> {
+            case ByteCodeOpCode.MakeVar -> {
                 int arg = chunk.code.get(offset + 1);
                 String constant = chunk.code.get(offset + 2) == 1 ? "CONSTANT" : "MUTABLE";
                 writeElement(String.format("%-16s %-16s %04d%n", constant, "OP_MAKE_VAR", arg));
                 return offset + 3;
             }
-            case OpCode.Throw -> {
+            case ByteCodeOpCode.Throw -> {
                 return simpleInstruction("OP_THROW", offset);
             }
-            case OpCode.Assert -> {
+            case ByteCodeOpCode.Assert -> {
                 return simpleInstruction("OP_ASSERT", offset);
             }
-            case OpCode.Copy -> {
+            case ByteCodeOpCode.Copy -> {
                 return simpleInstruction("OP_COPY", offset);
             }
-            case OpCode.MakeArray -> {
+            case ByteCodeOpCode.MakeArray -> {
                 return byteInstruction("OP_MAKE_ARRAY", chunk, offset);
             }
-            case OpCode.MakeMap -> {
+            case ByteCodeOpCode.MakeMap -> {
                 return byteInstruction("OP_MAKE_MAP", chunk, offset);
             }
-            case OpCode.Enum -> {
+            case ByteCodeOpCode.Enum -> {
                 int constant = chunk.code.get(offset + 1);
                 int isPublic = chunk.code.get(offset + 2);
                 writeElement(String.format("%-16s %-16s %-16s %n", "OP_ENUM",
                         isPublic == 1 ? "PUBLIC" : "", chunk.constants.values.get(constant)));
                 return offset + 3;
             }
-            case OpCode.GetUpvalue -> {
+            case ByteCodeOpCode.GetUpvalue -> {
                 return byteInstruction("OP_GET_UPVALUE", chunk, offset);
             }
-            case OpCode.SetUpvalue -> {
+            case ByteCodeOpCode.SetUpvalue -> {
                 return byteInstruction("OP_SET_UPVALUE", chunk, offset);
             }
-            case OpCode.FromBytes -> {
+            case ByteCodeOpCode.FromBytes -> {
                 return simpleInstruction("OP_FROM_BYTES", offset);
             }
-            case OpCode.ToBytes -> {
+            case ByteCodeOpCode.ToBytes -> {
                 return simpleInstruction("OP_TO_BYTES", offset);
             }
-            case OpCode.Deref -> {
+            case ByteCodeOpCode.Deref -> {
                 return simpleInstruction("OP_DEREF", offset);
             }
-            case OpCode.Ref -> {
+            case ByteCodeOpCode.Ref -> {
                 return simpleInstruction("OP_REF", offset);
             }
-            case OpCode.SetRef -> {
+            case ByteCodeOpCode.SetRef -> {
                 return simpleInstruction("OP_SET_REF", offset);
             }
-            case OpCode.Jump -> {
+            case ByteCodeOpCode.Jump -> {
                 return jumpInstruction("OP_JUMP", 1, chunk, offset);
             }
-            case OpCode.JumpIfFalse -> {
+            case ByteCodeOpCode.JumpIfFalse -> {
                 return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset);
             }
-            case OpCode.JumpIfTrue -> {
+            case ByteCodeOpCode.JumpIfTrue -> {
                 return jumpInstruction("OP_JUMP_IF_TRUE", 1, chunk, offset);
             }
-            case OpCode.Loop -> {
+            case ByteCodeOpCode.Loop -> {
                 return jumpInstruction("OP_LOOP", -1, chunk, offset);
             }
-            case OpCode.Method -> {
+            case ByteCodeOpCode.Method -> {
                 constantInstruction("OP_METHOD", chunk, offset);
                 return offset + 5;
             }
-            case OpCode.Access -> {
+            case ByteCodeOpCode.Access -> {
                 return constantInstruction("OP_ACCESS", chunk, offset);
             }
-            case OpCode.StartCache -> {
+            case ByteCodeOpCode.StartCache -> {
                 return simpleInstruction("OP_START_CACHE", offset);
             }
-            case OpCode.CollectLoop -> {
+            case ByteCodeOpCode.CollectLoop -> {
                 return simpleInstruction("OP_COLLECT_LOOP", offset);
             }
-            case OpCode.FlushLoop -> {
+            case ByteCodeOpCode.FlushLoop -> {
                 return simpleInstruction("OP_FLUSH_LOOP", offset);
             }
-            case OpCode.For -> {
+            case ByteCodeOpCode.For -> {
                 return forInstruction(chunk, offset);
             }
-            case OpCode.Class -> {
+            case ByteCodeOpCode.Class -> {
                 int end = constantInstruction("OP_CLASS", chunk, offset);
                 int attributeCount = chunk.code.get(offset + 2);
                 // CONSTANT ISSTATIC ISPRIVATE TYPE
                 int totalAttributeOffset = 1 + attributeCount * 3;
                 return end + totalAttributeOffset;
             }
-            case OpCode.Call -> {
+            case ByteCodeOpCode.Call -> {
                 int argCount = chunk.code.get(offset + 1);
                 int kwargCount = chunk.code.get(offset + 2);
                 writeElement(String.format("%-16s %04d %04d%n", "OP_CALL", argCount, kwargCount));
                 return offset + 3 + kwargCount;
             }
-            case OpCode.Closure -> {
+            case ByteCodeOpCode.Closure -> {
                 offset++;
                 int constant = chunk.code.get(offset++);
                 int defaults = chunk.code.get(offset++);
@@ -232,61 +237,61 @@ public class Disassembler {
 
                 return offset;
             }
-            case OpCode.Null -> {
+            case ByteCodeOpCode.Null -> {
                 return simpleInstruction("OP_NULL", offset);
             }
-            case OpCode.SetAttr -> {
+            case ByteCodeOpCode.SetAttr -> {
                 return byteInstruction("OP_SET_ATTR", chunk, offset);
             }
-            case OpCode.GetAttr -> {
+            case ByteCodeOpCode.GetAttr -> {
                 return byteInstruction("OP_GET_ATTR", chunk, offset);
             }
-            case OpCode.Import -> {
+            case ByteCodeOpCode.Import -> {
                 int fromConstant = chunk.code.get(offset + 1);
                 int asConstant = chunk.code.get(offset + 2);
                 writeElement(String.format("%-16s %-16s as %-16s%n", "OP_IMPORT", chunk.constants.values.get(fromConstant), chunk.constants.values.get(asConstant)));
                 return offset + 3;
             }
-            case OpCode.BitAnd -> {
+            case ByteCodeOpCode.BitAnd -> {
                 return simpleInstruction("OP_BIT_AND", offset);
             }
-            case OpCode.BitOr -> {
+            case ByteCodeOpCode.BitOr -> {
                 return simpleInstruction("OP_BIT_OR", offset);
             }
-            case OpCode.BitXor -> {
+            case ByteCodeOpCode.BitXor -> {
                 return simpleInstruction("OP_BIT_XOR", offset);
             }
-            case OpCode.BitCompl -> {
+            case ByteCodeOpCode.BitCompl -> {
                 return simpleInstruction("OP_BIT_NOT", offset);
             }
-            case OpCode.LeftShift -> {
+            case ByteCodeOpCode.LeftShift -> {
                 return simpleInstruction("OP_BIT_SHIFT_LEFT", offset);
             }
-            case OpCode.RightShift -> {
+            case ByteCodeOpCode.RightShift -> {
                 return simpleInstruction("OP_BIT_SHIFT_RIGHT", offset);
             }
-            case OpCode.SignRightShift -> {
+            case ByteCodeOpCode.SignRightShift -> {
                 return simpleInstruction("OP_BIT_SHIFT_RIGHT_SIGNED", offset);
             }
-            case OpCode.DropGlobal -> {
+            case ByteCodeOpCode.DropGlobal -> {
                 return constantInstruction("OP_DROP_GLOBAL", chunk, offset);
             }
-            case OpCode.DropLocal -> {
+            case ByteCodeOpCode.DropLocal -> {
                 return byteInstruction("OP_DROP_LOCAL", chunk, offset);
             }
-            case OpCode.DropUpvalue -> {
+            case ByteCodeOpCode.DropUpvalue -> {
                 return byteInstruction("OP_DROP_UPVALUE", chunk, offset);
             }
-            case OpCode.Spread -> {
+            case ByteCodeOpCode.Spread -> {
                 return simpleInstruction("OP_SPREAD", offset);
             }
-            case OpCode.Get -> {
+            case ByteCodeOpCode.Get -> {
                 return simpleInstruction("OP_GET", offset);
             }
-            case OpCode.Index -> {
+            case ByteCodeOpCode.Index -> {
                 return simpleInstruction("OP_INDEX", offset);
             }
-            case OpCode.Iter -> {
+            case ByteCodeOpCode.Iter -> {
                 int slot = chunk.code.get(offset + 1);
                 int slot2 = chunk.code.get(offset + 2);
                 int jump = chunk.code.get(offset + 3);
@@ -295,7 +300,7 @@ public class Disassembler {
 
                 return offset + 4;
             }
-            case OpCode.Chain -> {
+            case ByteCodeOpCode.Chain -> {
                 return simpleInstruction("OP_CHAIN", offset);
             }
             default -> {

@@ -27,6 +27,7 @@ public class DtoolConfigLexer {
 
                 // Atoms
                 .addRule(DtoolTokenType.IDENTIFIER, i -> i.addRegex("[a-zA-Z_][a-zA-Z0-9_]*"))
+                .addRule(DtoolTokenType.NUMBER, i-> i.addRegex("[0-9]*"))
                 .addRule(DtoolTokenType.STRING, i -> i
                         .addMultiline("'", "\\", "'")
                         .addMultiline("\"", "\\", "\""))
@@ -35,6 +36,7 @@ public class DtoolConfigLexer {
                 .addRule(DtoolTokenType.DEPEND_TAG, i -> i.addString("depend"))
                 .addRule(DtoolTokenType.DEVELOPMENT_TAG, i -> i.addString("development"))
                 .addRule(DtoolTokenType.PLUGIN_TAG, i -> i.addString("plugins"))
+                .addRule(DtoolTokenType.MODULE, i -> i.addString("module"))
 
                 .addRule(DtoolTokenType.RESOLVE, i -> i.addString("resolve"))
                 .addRule(DtoolTokenType.FROM, i -> i.addString("from"))

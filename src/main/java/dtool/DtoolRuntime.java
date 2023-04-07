@@ -2,6 +2,9 @@ package dtool;
 
 import dtool.config.DtoolConfig;
 import dtool.io.ProjectFolder;
+import language.backend.compiler.CompileType;
+
+import java.nio.file.Path;
 
 public abstract class DtoolRuntime {
 
@@ -14,7 +17,7 @@ public abstract class DtoolRuntime {
             "build/"
     };
 
-    public abstract void init();
+    public abstract int init();
 
     public abstract void processLexer();
 
@@ -22,7 +25,7 @@ public abstract class DtoolRuntime {
 
     public abstract void processPreCompiler();
 
-    public abstract void processCompiler();
+    public abstract void processCompiler(final CompileType compileType);
 
     public abstract void processFinalize();
 
@@ -41,4 +44,5 @@ public abstract class DtoolRuntime {
     }
 
 
+    public abstract Path getSourcePath();
 }

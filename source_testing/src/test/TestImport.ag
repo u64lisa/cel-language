@@ -1,17 +1,17 @@
-class YourMom {
-
-    method static whatThis {
-        println("it did the static call OWO");
-    }
-
+inline test() -> void {
+    println("imported inline function!");
 }
 
-object MethodHolder2 {
+class BuilderTest {
 
-    method static printTest -> any {
-        println("Test what is this owo");
+    method public first() -> BuilderTest {
 
-        69
+        return BuilderTest();
+    }
+
+    method public second() -> BuilderTest {
+
+        return BuilderTest();
     }
 
 }

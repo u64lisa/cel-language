@@ -25,7 +25,7 @@ public enum NodeType {
     ENUM,
     ENUM_CHILD,
     FUNCTION,
-    FUNCTION_DEFINITION,
+    INLINE_DEFINITION,
     FOR,
     GENERIC,
     IMPORT,

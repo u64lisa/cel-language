@@ -1,5 +1,8 @@
 package language.backend.compiler.bytecode;
 
+import dtool.logger.ImplLogger;
+import dtool.logger.Logger;
+import dtool.logger.errors.LanguageException;
 import language.backend.compiler.bytecode.headers.HeadCode;
 import language.backend.compiler.bytecode.types.GenericType;
 import language.backend.compiler.bytecode.types.Type;
@@ -12,11 +15,6 @@ import language.backend.compiler.bytecode.values.enums.LanguageEnumChild;
 import language.frontend.lexer.token.Position;
 import language.frontend.lexer.token.Token;
 import language.frontend.lexer.token.TokenType;
-import language.vm.library.LibraryClassLoader;
-import language.vm.library.NativeContext;
-import dtool.logger.ImplLogger;
-import dtool.logger.Logger;
-import dtool.logger.errors.LanguageException;
 import language.frontend.parser.nodes.Node;
 import language.frontend.parser.nodes.NodeType;
 import language.frontend.parser.nodes.cases.Case;
@@ -33,6 +31,8 @@ import language.frontend.parser.nodes.variables.VarAccessNode;
 import language.frontend.parser.units.EnumChild;
 import language.utils.WrappedCast;
 import language.vm.VirtualMachine;
+import language.vm.library.LibraryClassLoader;
+import language.vm.library.NativeContext;
 
 import java.util.*;
 
@@ -97,8 +97,6 @@ public class Compiler {
     private int localCount;
     private int scopeDepth;
 
-    private final Disassembler disassembler;
-
     private final ByteCode byteCode;
 
     private final Stack<Integer> continueTo;
@@ -130,8 +128,6 @@ public class Compiler {
         this.byteCode = new ByteCode(source);
 
         this.classObjectType = classObjectType;
-
-        this.disassembler = new Disassembler("compiler");
 
         if (enclosing != null) {
             this.enclosingType = enclosing.enclosingType;
@@ -207,7 +203,7 @@ public class Compiler {
     void deStackPop(Local[] locals) {
         int count = deStack(locals);
         for (int i = 0; i < count; i++) {
-            emit(OpCode.Pop);
+            emit(ByteCodeOpCode.Pop);
             localCount--;
         }
     }
@@ -339,7 +335,7 @@ public class Compiler {
     }
 
     void emitLoop(int loopStart) {
-        emit(OpCode.Loop);
+        emit(ByteCodeOpCode.Loop);
 
         int offset = chunk().code.size() - loopStart + 1;
 
@@ -359,25 +355,37 @@ public class Compiler {
         statements.removeIf(node -> node.getNodeType() == NodeType.PACKAGE);
         statements.removeIf(node -> node.getNodeType() == NodeType.IMPORT);
 
-        for (Node statement : statements) {
-            compile(statement);
-            emit(OpCode.Pop);
+        for (TypeDefinitionNode node : statements
+                .stream()
+                .filter(node -> node.getNodeType().equals(NodeType.TYPE_DEFINITION))
+                .map(node -> (TypeDefinitionNode) node)
+                .toList()) {
+            String typeName = node.getType().asString();
+            String name = node.getName().asString();
+
+            Type type = typeHandler.types.getOrDefault(typeName, null);
+            if (type == null) {
+                this.error("Typedef", "invalid type for '" + typeName + "'");
+                return null;
+            }
+
+            typeHandler.types.put(name, type);
         }
 
-        emit(OpCode.Return);
+        statements.removeIf(node -> node.getNodeType() == NodeType.TYPE_DEFINITION);
+
+        for (Node statement : statements) {
+            compile(statement);
+            emit(ByteCodeOpCode.Pop);
+        }
+
+        emit(ByteCodeOpCode.Return);
 
         return endCompiler();
     }
 
     public ByteCode endCompiler() {
-        if (SYSTEM_LOGGER.isDebugging())
-            disassembler.disassembleChunk(chunk(),
-                    byteCode.name != null ? byteCode.name : "<script>");
-
         byteCode.chunk.compile();
-
-        if (SYSTEM_LOGGER.isDebugging())
-            disassembler.finish();
 
         return byteCode;
     }
@@ -390,7 +398,7 @@ public class Compiler {
             case USE -> compile((UseNode) statement);
             case DESTRUCT -> compile((DestructNode) statement);
             case DECORATOR -> compile((DecoratorNode) statement);
-            case FUNCTION_DEFINITION -> compile((FunctionDeclareNode) statement);
+            case INLINE_DEFINITION -> compile((InlineDeclareNode) statement);
             case CALL -> compile((CallNode) statement);
             case RETURN -> compile((ReturnNode) statement);
             case SPREAD -> compile((SpreadNode) statement);
@@ -414,7 +422,7 @@ public class Compiler {
                 BodyNode node = (BodyNode) statement;
                 for (Node stmt : node.statements) {
                     compile(stmt);
-                    emit(OpCode.Pop);
+                    emit(ByteCodeOpCode.Pop);
                 }
                 compileNull();
             }
@@ -430,19 +438,19 @@ public class Compiler {
                 compile(node.className);
                 String attr = node.attributeName.getValue().toString();
                 int constant = chunk().addConstant(new Value(attr));
-                emit(OpCode.Access, constant);
+                emit(ByteCodeOpCode.Access, constant);
             }
             case ATTRIBUTE_ASSIGN -> {
                 AttributeAssignNode node = (AttributeAssignNode) statement;
                 compile(node.value);
                 int constant = chunk().addConstant(new Value(node.name.getValue().toString()));
-                emit(OpCode.SetAttr, constant);
+                emit(ByteCodeOpCode.SetAttr, constant);
             }
             case ATTRIBUTE_ACCESS -> {
                 AttributeAccessNode node = (AttributeAccessNode) statement;
                 String attr = node.name.getValue().toString();
                 int constant = chunk().addConstant(new Value(attr));
-                emit(OpCode.GetAttr, constant);
+                emit(ByteCodeOpCode.GetAttr, constant);
             }
             case VAR_ASSIGNMENT -> compile((VarAssignNode) statement);
             case DYNAMIC_ASSIGN -> compile((MacroAssignNode) statement);
@@ -464,12 +472,11 @@ public class Compiler {
                 if (breaks.isEmpty())
                     error("Invalid Syntax", "Break statement outside of loop");
                 compileNull();
-                breaks.peek().add(emitJump(OpCode.Jump));
+                breaks.peek().add(emitJump(ByteCodeOpCode.Jump));
             }
             case CONTINUE -> emitLoop(continueTo.peek());
             case REFERENCE -> compile((RefNode) statement);
             case DE_REF -> compile((DerefNode) statement);
-            case TYPE_DEFINITION -> compile((TypeDefinitionNode) statement);
             case COMPILER -> compile((CompilerNode) statement);
             case MACRO_DEFINITION -> compile((MacroDefinitionNode) statement);
             default -> throw new RuntimeException("Unknown statement type: " + statement.getNodeType());
@@ -490,26 +497,26 @@ public class Compiler {
         Type decorated = compile(node.decorated);
         Type decorator = compile(node.decorator);
         if (!(decorator instanceof ClassObjectType) || !(decorated instanceof ClassObjectType)) {
-            error("Decorator", "Decorator and decorated must be a function");
+            error("Decorator", "Decorator and decorated must be a inline");
         }
         Type result = decorator.call(new Type[]{decorated}, new Type[0]);
         if (!decorated.equals(result)) {
-            error("Decorator", "Decorator must return the decorated function");
+            error("Decorator", "Decorator must return the decorated inline");
         }
         emit(new int[]{
-                OpCode.Call,
+                ByteCodeOpCode.Call,
                 1, 0
         });
         String name = node.name.getValue().toString();
         int arg = resolveLocal(name);
 
         if (arg != -1) {
-            emit(OpCode.SetLocal, arg);
+            emit(ByteCodeOpCode.SetLocal, arg);
         } else if ((arg = resolveUpValue(name)) != -1) {
-            emit(OpCode.SetUpvalue, arg);
+            emit(ByteCodeOpCode.SetUpvalue, arg);
         } else {
             arg = chunk().addConstant(new Value(name));
-            emit(OpCode.SetGlobal, arg);
+            emit(ByteCodeOpCode.SetGlobal, arg);
         }
     }
 
@@ -530,22 +537,12 @@ public class Compiler {
         }
         inPattern = false;
         patternType = Types.VOID;
-        emit(OpCode.Pattern, keySet.length);
+        emit(ByteCodeOpCode.Pattern, keySet.length);
         for (int i = keySet.length - 1; i >= 0; i--) {
             Token token = keySet[i];
             int constant = chunk().addConstant(new Value(token.getValue().toString()));
             emit(constant);
         }
-    }
-
-    void compile(TypeDefinitionNode node) {
-        emit(OpCode.TypeDef, 2);
-        String typeName = node.getName().toString();
-        String original = node.getType().toString();
-
-        emit(chunk().addConstant(new Value(typeName)));
-
-        emit(chunk().addConstant(new Value(original)));
     }
 
     void compile(DestructNode node) {
@@ -554,7 +551,7 @@ public class Compiler {
         if (destructed instanceof NamespaceType)
             System.out.println(destructed);
 
-        emit(OpCode.Destruct, node.subs.size());
+        emit(ByteCodeOpCode.Destruct, node.subs.size());
         for (Token sub : node.subs) {
             String name = sub.getValue().toString();
             Type type = destructed.access(name);
@@ -619,7 +616,7 @@ public class Compiler {
             error("Argument Count", name + "() takes exactly " + argc + " arguments");
         }
 
-        emit(OpCode.Header);
+        emit(ByteCodeOpCode.Header);
         emit(code, node.args.size());
         for (Token arg : node.args) {
             int constant = chunk().addConstant(new Value(arg.getValue().toString()));
@@ -641,7 +638,7 @@ public class Compiler {
 
     void compile(BytesNode node) {
         compile(node.toBytes);
-        emit(OpCode.ToBytes);
+        emit(ByteCodeOpCode.ToBytes);
     }
 
     void compile(DerefNode node) {
@@ -649,17 +646,17 @@ public class Compiler {
         if (!(type instanceof ReferenceType)) {
             error("Type", "Cannot dereference " + type);
         }
-        emit(OpCode.Deref);
+        emit(ByteCodeOpCode.Deref);
     }
 
     void compile(RefNode node) {
         compile(node.inner);
-        emit(OpCode.Ref);
+        emit(ByteCodeOpCode.Ref);
     }
 
     void compile(SpreadNode node) {
         compile(node.internal);
-        emit(OpCode.Spread);
+        emit(ByteCodeOpCode.Spread);
     }
 
     Type compile(EnumNode node) {
@@ -714,7 +711,7 @@ public class Compiler {
                 name,
                 children
         )));
-        emit(new int[]{OpCode.Enum, constant, node.pub ? 1 : 0});
+        emit(new int[]{ByteCodeOpCode.Enum, constant, node.pub ? 1 : 0});
         return type;
     }
 
@@ -746,13 +743,13 @@ public class Compiler {
 
     void compile(AssertNode node) {
         compile(node.condition);
-        emit(OpCode.Assert);
+        emit(ByteCodeOpCode.Assert);
     }
 
     void compile(ThrowNode node) {
         compile(node.thrown);
         compile(node.throwType);
-        emit(OpCode.Throw);
+        emit(ByteCodeOpCode.Throw);
     }
 
     void compile(ReturnNode node) {
@@ -761,7 +758,7 @@ public class Compiler {
         } else {
             compileNull();
         }
-        emit(OpCode.Return);
+        emit(ByteCodeOpCode.Return);
     }
 
     void compile(CallNode node) {
@@ -777,10 +774,10 @@ public class Compiler {
         }
         Type function = compile(node.nodeToCall);
         if (!function.callable()) {
-            error("Type", "Can't call non-function");
+            error("Type", "Can't call non-inline");
         }
         emit(new int[]{
-                OpCode.Call,
+                ByteCodeOpCode.Call,
                 argc, argumentCount
         });
         for (int i = 0; i < argumentCount; i++) {
@@ -806,7 +803,7 @@ public class Compiler {
         }
     }
 
-    void compile(FunctionDeclareNode node) {
+    void compile(InlineDeclareNode node) {
         ClassObjectType type = (ClassObjectType) typeHandler.resolve(node);
 
         int global = -1;
@@ -842,19 +839,19 @@ public class Compiler {
 
             compile(node.reference);
             compile(elementCase.getCondition());
-            emit(OpCode.EQUAL);
+            emit(ByteCodeOpCode.EQUAL);
 
-            jumps[i] = emitJump(OpCode.JumpIfTrue);
-            emit(OpCode.Pop);
+            jumps[i] = emitJump(ByteCodeOpCode.JumpIfTrue);
+            emit(ByteCodeOpCode.Pop);
         }
-        int defaultJump = emitJump(OpCode.Jump);
+        int defaultJump = emitJump(ByteCodeOpCode.Jump);
 
         for (int i = 0; i < jumps.length; i++) {
             Case elementCase = node.cases.get(i);
             int jump = jumps[i];
 
             patchJump(jump);
-            emit(OpCode.Pop);
+            emit(ByteCodeOpCode.Pop);
             compile(elementCase.getStatements());
         }
 
@@ -877,16 +874,16 @@ public class Compiler {
             compile(node.reference);
             int height = localCount;
             compile(elementCase.getCondition());
-            emit(OpCode.EQUAL);
+            emit(ByteCodeOpCode.EQUAL);
 
-            int jump = emitJump(OpCode.JumpIfFalse);
-            emit(OpCode.Pop);
+            int jump = emitJump(ByteCodeOpCode.JumpIfFalse);
+            emit(ByteCodeOpCode.Pop);
 
             compile(elementCase.getStatements());
-            jumps[i] = emitJump(OpCode.Jump);
+            jumps[i] = emitJump(ByteCodeOpCode.Jump);
             patchJump(jump);
 
-            emit(OpCode.Pop);
+            emit(ByteCodeOpCode.Pop);
 
             localCount = height;
         }
@@ -908,13 +905,13 @@ public class Compiler {
         locals[localCount - 1].depth = scopeDepth;
     }
 
-    void function(FunctionType type, ClassObjectType classObjectType, FunctionDeclareNode node) {
+    void function(FunctionType type, ClassObjectType classObjectType, InlineDeclareNode node) {
         function(type, classObjectType, node, c -> {
         }, c -> {
         });
     }
 
-    void function(FunctionType type, ClassObjectType classObjectType, FunctionDeclareNode node, CompilerWrapped pre, CompilerWrapped post) {
+    void function(FunctionType type, ClassObjectType classObjectType, InlineDeclareNode node, CompilerWrapped pre, CompilerWrapped post) {
         Compiler compiler = new Compiler(this, type, chunk().source, classObjectType).catchErrors(node.catcher);
         compiler.beginScope();
 
@@ -951,7 +948,7 @@ public class Compiler {
         compiler.compile(node.body);
         post.compile(compiler);
 
-        compiler.emit(OpCode.Return);
+        compiler.emit(ByteCodeOpCode.Return);
 
         ByteCode byteCode = compiler.endCompiler();
 
@@ -968,7 +965,7 @@ public class Compiler {
                 compile(defaultValue);
         }
 
-        emit(new int[]{OpCode.Closure, chunk().addConstant(new Value(byteCode)), node.defaultCount});
+        emit(new int[]{ByteCodeOpCode.Closure, chunk().addConstant(new Value(byteCode)), node.defaultCount});
 
         for (int i = 0; i < byteCode.upvalueCount; i++) {
             UpValue upvalue = compiler.upValues[i];
@@ -987,76 +984,76 @@ public class Compiler {
     }
 
     void compileNull() {
-        emit(OpCode.Null);
+        emit(ByteCodeOpCode.Null);
     }
 
     void compileBoolean(boolean val) {
         int constant = chunk().addConstant(new Value(val));
-        emit(OpCode.Constant, constant);
+        emit(ByteCodeOpCode.Constant, constant);
     }
 
     void compileNumber(double val) {
         int constant = chunk().addConstant(new Value(val));
-        emit(OpCode.Constant, constant);
+        emit(ByteCodeOpCode.Constant, constant);
     }
 
     void compileString(String val) {
         int constant = chunk().addConstant(new Value(val));
-        emit(OpCode.Constant, constant);
+        emit(ByteCodeOpCode.Constant, constant);
     }
 
     void compile(BinOpNode node) {
         if (node.operation == TokenType.AMPERSAND) {
             compile(node.left);
-            int jump = emitJump(OpCode.JumpIfFalse);
+            int jump = emitJump(ByteCodeOpCode.JumpIfFalse);
             //noinspection DuplicatedCode
-            emit(OpCode.Pop);
+            emit(ByteCodeOpCode.Pop);
             compile(node.right);
             patchJump(jump);
             return;
         } else if (node.operation == TokenType.PIPE) {
             compile(node.left);
-            int jump = emitJump(OpCode.JumpIfTrue);
+            int jump = emitJump(ByteCodeOpCode.JumpIfTrue);
             //noinspection DuplicatedCode
-            emit(OpCode.Pop);
+            emit(ByteCodeOpCode.Pop);
             compile(node.right);
             patchJump(jump);
             return;
         } else if (node.operation == TokenType.FAT_ARROW) {
             compile(node.right);
             compile(node.left);
-            emit(OpCode.SetRef);
+            emit(ByteCodeOpCode.SetRef);
             return;
         } else if (node.operation == TokenType.COLON) {
             compile(node.left);
             compile(node.right);
-            emit(OpCode.Chain);
+            emit(ByteCodeOpCode.Chain);
             return;
         }
 
         compile(node.left);
         compile(node.right);
         switch (node.operation) {
-            case PLUS -> emit(OpCode.Add);
-            case MINUS -> emit(OpCode.Subtract);
-            case STAR -> emit(OpCode.Multiply);
-            case SLASH -> emit(OpCode.Divide);
-            case PERCENT -> emit(OpCode.Modulo);
-            case CARET -> emit(OpCode.Power);
-            case EQUAL_EQUAL -> emit(OpCode.EQUAL);
-            case BANG_EQUAL -> emit(new int[]{OpCode.EQUAL, OpCode.Not});
-            case RIGHT_ANGLE -> emit(OpCode.GreaterThan);
-            case LEFT_ANGLE -> emit(OpCode.LessThan);
-            case GREATER_EQUALS -> emit(new int[]{OpCode.LessThan, OpCode.Not});
-            case LESS_EQUALS -> emit(new int[]{OpCode.GreaterThan, OpCode.Not});
-            case LEFT_BRACKET -> emit(OpCode.Index);
-            case DOT -> emit(OpCode.Get);
-            case TILDE_AMPERSAND -> emit(OpCode.BitAnd);
-            case TILDE_PIPE -> emit(OpCode.BitOr);
-            case TILDE_CARET -> emit(OpCode.BitXor);
-            case LEFT_TILDE_ARROW -> emit(OpCode.LeftShift);
-            case TILDE_TILDE -> emit(OpCode.RightShift);
-            case RIGHT_TILDE_ARROW -> emit(OpCode.SignRightShift);
+            case PLUS -> emit(ByteCodeOpCode.Add);
+            case MINUS -> emit(ByteCodeOpCode.Subtract);
+            case STAR -> emit(ByteCodeOpCode.Multiply);
+            case SLASH -> emit(ByteCodeOpCode.Divide);
+            case PERCENT -> emit(ByteCodeOpCode.Modulo);
+            case CARET -> emit(ByteCodeOpCode.Power);
+            case EQUAL_EQUAL -> emit(ByteCodeOpCode.EQUAL);
+            case BANG_EQUAL -> emit(new int[]{ByteCodeOpCode.EQUAL, ByteCodeOpCode.Not});
+            case RIGHT_ANGLE -> emit(ByteCodeOpCode.GreaterThan);
+            case LEFT_ANGLE -> emit(ByteCodeOpCode.LessThan);
+            case GREATER_EQUALS -> emit(new int[]{ByteCodeOpCode.LessThan, ByteCodeOpCode.Not});
+            case LESS_EQUALS -> emit(new int[]{ByteCodeOpCode.GreaterThan, ByteCodeOpCode.Not});
+            case LEFT_BRACKET -> emit(ByteCodeOpCode.Index);
+            case DOT -> emit(ByteCodeOpCode.Get);
+            case TILDE_AMPERSAND -> emit(ByteCodeOpCode.BitAnd);
+            case TILDE_PIPE -> emit(ByteCodeOpCode.BitOr);
+            case TILDE_CARET -> emit(ByteCodeOpCode.BitXor);
+            case LEFT_TILDE_ARROW -> emit(ByteCodeOpCode.LeftShift);
+            case TILDE_TILDE -> emit(ByteCodeOpCode.RightShift);
+            case RIGHT_TILDE_ARROW -> emit(ByteCodeOpCode.SignRightShift);
             default -> throw new RuntimeException("Unknown operator: " + node.operation);
         }
     }
@@ -1067,22 +1064,22 @@ public class Compiler {
             case PLUS:
                 break;
             case MINUS:
-                emit(OpCode.Negate);
+                emit(ByteCodeOpCode.Negate);
                 break;
             case BANG:
-                emit(OpCode.Not);
+                emit(ByteCodeOpCode.Not);
                 break;
             case PLUS_PLUS:
-                emit(OpCode.Increment);
+                emit(ByteCodeOpCode.Increment);
                 break;
             case MINUS_MINUS:
-                emit(OpCode.Decrement);
+                emit(ByteCodeOpCode.Decrement);
                 break;
             case TILDE:
-                emit(OpCode.BitCompl);
+                emit(ByteCodeOpCode.BitCompl);
                 break;
             case DOLLAR:
-                emit(OpCode.FromBytes);
+                emit(ByteCodeOpCode.FromBytes);
                 break;
             default:
                 throw new RuntimeException("Unknown operator: " + node.operation);
@@ -1104,19 +1101,19 @@ public class Compiler {
         int arg = resolveLocal(name);
 
         if (arg != -1) {
-            emit(OpCode.GetLocal, arg);
+            emit(ByteCodeOpCode.GetLocal, arg);
         } else if ((arg = resolveUpValue(name)) != -1) {
-            emit(OpCode.GetUpvalue, arg);
+            emit(ByteCodeOpCode.GetUpvalue, arg);
         } else if (hasGlobal(name)) {
             arg = chunk().addConstant(new Value(name));
-            emit(OpCode.GetGlobal, arg);
+            emit(ByteCodeOpCode.GetGlobal, arg);
         } else if (accessEnclosed(name) != null) {
             arg = chunk().addConstant(new Value(name));
-            emit(OpCode.GetAttr, arg);
+            emit(ByteCodeOpCode.GetAttr, arg);
         } else if (inPattern) {
             arg = chunk().addConstant(new Value(name));
             addLocal(name, patternType);
-            emit(OpCode.PatternVars, arg);
+            emit(ByteCodeOpCode.PatternVars, arg);
         } else {
             error("Scope", "Undefined variable '" + name + "'");
         }
@@ -1134,14 +1131,14 @@ public class Compiler {
 
         if (arg != -1) {
             locals[arg] = null;
-            emit(OpCode.DropLocal, arg);
+            emit(ByteCodeOpCode.DropLocal, arg);
         } else if ((arg = resolveUpValue(name)) != -1) {
             upValues[arg] = null;
-            emit(OpCode.DropUpvalue, arg);
+            emit(ByteCodeOpCode.DropUpvalue, arg);
         } else {
             arg = chunk().addConstant(new Value(name));
             globals.remove(name);
-            emit(OpCode.DropGlobal, arg);
+            emit(ByteCodeOpCode.DropGlobal, arg);
         }
 
         compileNull();
@@ -1170,7 +1167,7 @@ public class Compiler {
         boolean usesRange = min != Integer.MIN_VALUE || max != Integer.MAX_VALUE;
         if (scopeDepth > 0) {
             markInitialized();
-            emit(OpCode.DefineLocal);
+            emit(ByteCodeOpCode.DefineLocal);
             emit(constant ? 1 : 0);
             emit(usesRange ? 1 : 0);
             if (usesRange) {
@@ -1180,7 +1177,7 @@ public class Compiler {
         }
 
         globals.put(chunk().constants.values.get(global).asString(), type);
-        emit(OpCode.DefineGlobal, global);
+        emit(ByteCodeOpCode.DefineGlobal, global);
         emit(constant ? 1 : 0);
         emit(usesRange ? 1 : 0);
         if (usesRange) {
@@ -1190,7 +1187,7 @@ public class Compiler {
 
     @SuppressWarnings("all")
     void makeVar(int slot, boolean constant) {
-        emit(OpCode.MakeVar, slot);
+        emit(ByteCodeOpCode.MakeVar, slot);
         emit(constant ? 1 : 0);
     }
 
@@ -1235,12 +1232,12 @@ public class Compiler {
 
     public final Map<String, String> missMatchMap = new HashMap<>() {{
 
-        put("float", "double");
-        put("double", "float");
-        put("int", "double");
-        put("long", "double");
-        put("short", "double");
-        put("byte", "double");
+        put("f32", "i64");
+        put("i64", "f32");
+        put("i32", "i64");
+        put("i128", "i64");
+        put("i16", "i64");
+        put("i8", "i64");
 
     }};
 
@@ -1263,12 +1260,12 @@ public class Compiler {
         }
 
         if (arg != -1) {
-            emit(OpCode.SetLocal, arg);
+            emit(ByteCodeOpCode.SetLocal, arg);
         } else if ((arg = resolveUpValue(name)) != -1) {
-            emit(OpCode.SetUpvalue, arg);
+            emit(ByteCodeOpCode.SetUpvalue, arg);
         } else {
             arg = chunk().addConstant(new Value(name));
-            emit(OpCode.SetGlobal, arg);
+            emit(ByteCodeOpCode.SetGlobal, arg);
         }
     }
 
@@ -1282,13 +1279,13 @@ public class Compiler {
 
         scope.beginScope();
         method.compile(scope);
-        scope.emit(OpCode.Return);
+        scope.emit(ByteCodeOpCode.Return);
         scope.endScope();
 
         ByteCode func = scope.endCompiler();
         func.name = scopeName;
 
-        emit(new int[]{OpCode.Closure, chunk().addConstant(new Value(func)), 0});
+        emit(new int[]{ByteCodeOpCode.Closure, chunk().addConstant(new Value(func)), 0});
         for (int i = 0; i < func.upvalueCount; i++) {
             UpValue upvalue = scope.upValues[i];
             emit(upvalue.isLocal ? 1 : upvalue.isGlobal ? 2 : 0);
@@ -1298,7 +1295,7 @@ public class Compiler {
                 emit(chunk().addConstant(new Value(upvalue.globalName)));
             }
         }
-        emit(new int[]{OpCode.Call, 0, 0});
+        emit(new int[]{ByteCodeOpCode.Call, 0, 0});
     }
 
     void compile(ScopeNode node) {
@@ -1312,28 +1309,28 @@ public class Compiler {
         for (Case nodeCase : node.cases) {
             if (lastJump != 0) {
                 patchJump(lastJump);
-                emit(OpCode.Pop);
+                emit(ByteCodeOpCode.Pop);
             }
 
             compile(nodeCase.getCondition());
-            lastJump = emitJump(OpCode.JumpIfFalse);
-            emit(OpCode.Pop);
+            lastJump = emitJump(ByteCodeOpCode.JumpIfFalse);
+            emit(ByteCodeOpCode.Pop);
             beginScope();
             compile(nodeCase.getStatements());
             endScope();
 
             if (!nodeCase.isReturnValue()) {
-                emit(OpCode.Pop);
+                emit(ByteCodeOpCode.Pop);
                 compileNull();
             }
 
-            jumps.add(emitJump(OpCode.Jump));
+            jumps.add(emitJump(ByteCodeOpCode.Jump));
         }
 
         if (node.elseCase != null) {
             if (lastJump != 0) {
                 patchJump(lastJump);
-                emit(OpCode.Pop);
+                emit(ByteCodeOpCode.Pop);
                 lastJump = 0;
             }
 
@@ -1342,13 +1339,13 @@ public class Compiler {
             endScope();
 
             if (!node.elseCase.isReturnValue()) {
-                emit(OpCode.Pop);
+                emit(ByteCodeOpCode.Pop);
                 compileNull();
             }
         }
 
         if (lastJump != 0) {
-            emit(OpCode.Pop);
+            emit(ByteCodeOpCode.Pop);
             patchJump(lastJump);
         }
 
@@ -1365,21 +1362,21 @@ public class Compiler {
         compile(body);
 
         if (returnsNull) {
-            emit(OpCode.Pop);
+            emit(ByteCodeOpCode.Pop);
         } else {
-            emit(OpCode.CollectLoop);
+            emit(ByteCodeOpCode.CollectLoop);
         }
 
         int popCount = deStack(locals) + deStack(generics);
 
         endScope();
         emitLoop(loopStart);
-        int pastJump = emitJump(OpCode.Jump);
+        int pastJump = emitJump(ByteCodeOpCode.Jump);
 
         continueTo.pop();
         patchBreaks();
         for (int i = 0; i < popCount; i++)
-            emit(OpCode.Pop);
+            emit(ByteCodeOpCode.Pop);
         patchJump(pastJump);
     }
 
@@ -1427,7 +1424,7 @@ public class Compiler {
         if (node.parentToken != null)
             accessVariable(node.parentToken.getValue().toString());
 
-        emit(OpCode.Class, nameConstant);
+        emit(ByteCodeOpCode.Class, nameConstant);
         emit(node.parentToken != null ? 1 : 0);
 
         emit(node.attributes.size() + node.generics.size());
@@ -1459,7 +1456,7 @@ public class Compiler {
 
         enclosingType = Types.VOID;
 
-        emit(OpCode.Pop);
+        emit(ByteCodeOpCode.Pop);
         compileNull();
 
         return type;
@@ -1475,13 +1472,13 @@ public class Compiler {
 
         FunctionType type = isConstructor ? FunctionType.CONSTRUCTOR : FunctionType.METHOD;
 
-        FunctionDeclareNode func = node.asFuncDef();
+        InlineDeclareNode func = node.asFuncDef();
         ClassObjectType classObjectType = (ClassObjectType) typeHandler.resolve(func);
 
         function(type, classObjectType, func);
 
         emit(new int[]{
-                OpCode.Method,
+                ByteCodeOpCode.Method,
                 nameConstant,
                 node.stat ? 1 : 0,
                 node.priv ? 1 : 0,
@@ -1504,31 +1501,31 @@ public class Compiler {
     void compile(WhileNode node) {
         boolean isDoWhile = node.conLast;
 
-        if (!node.retnull) emit(OpCode.StartCache);
+        if (!node.retnull) emit(ByteCodeOpCode.StartCache);
 
-        int skipFirst = isDoWhile ? emitJump(OpCode.Jump) : -1;
+        int skipFirst = isDoWhile ? emitJump(ByteCodeOpCode.Jump) : -1;
         int loopStart = chunk().code.size();
 
         compile(node.condition);
-        int jump = emitJump(OpCode.JumpIfFalse);
-        emit(OpCode.Pop);
+        int jump = emitJump(ByteCodeOpCode.JumpIfFalse);
+        emit(ByteCodeOpCode.Pop);
 
         if (isDoWhile)
             patchJump(skipFirst);
 
         loopBody(node.body, node.retnull, loopStart);
         patchJump(jump);
-        emit(OpCode.Pop);
+        emit(ByteCodeOpCode.Pop);
 
         if (node.retnull) {
             compileNull();
         } else {
-            emit(OpCode.FlushLoop);
+            emit(ByteCodeOpCode.FlushLoop);
         }
     }
 
     void compile(ForNode node) {
-        if (!node.retnull) emit(OpCode.StartCache);
+        if (!node.retnull) emit(ByteCodeOpCode.StartCache);
         beginScope();
 
         Type startType = typeHandler.resolve(node.start);
@@ -1542,7 +1539,7 @@ public class Compiler {
         String name = node.name.getValue().toString();
         copyVar(node.name, startType.isCompatible(TokenType.PLUS, stepType), node.start);
 
-        int firstSkip = emitJump(OpCode.Jump);
+        int firstSkip = emitJump(ByteCodeOpCode.Jump);
 
         int loopStart = chunk().code.size();
 
@@ -1553,7 +1550,7 @@ public class Compiler {
             compileNumber(1);
         }
 
-        emit(OpCode.For);
+        emit(ByteCodeOpCode.For);
         emit(resolveLocal(name));
 
         emit(0xff);
@@ -1566,7 +1563,7 @@ public class Compiler {
     }
 
     void compile(IterNode node) {
-        if (!node.retnull) emit(OpCode.StartCache);
+        if (!node.retnull) emit(ByteCodeOpCode.StartCache);
         beginScope();
 
         String name = node.name.getValue().toString();
@@ -1586,11 +1583,11 @@ public class Compiler {
                         node.name.getEndPosition()
                 )),
                 Integer.MIN_VALUE, Integer.MAX_VALUE);
-        emit(OpCode.Pop);
+        emit(ByteCodeOpCode.Pop);
 
         int loopStart = chunk().code.size();
 
-        emit(OpCode.Iter);
+        emit(ByteCodeOpCode.Iter);
         emit(resolveLocal("@" + name), resolveLocal(name));
 
         emit(0xff);
@@ -1609,23 +1606,23 @@ public class Compiler {
         if (returnNull) {
             compileNull();
         } else {
-            emit(OpCode.FlushLoop);
+            emit(ByteCodeOpCode.FlushLoop);
         }
     }
 
     void copyVar(Token varNameTok, Type type, Node startValueNode) {
         int global = parseVariable(varNameTok, type);
         compile(startValueNode);
-        emit(OpCode.Copy);
+        emit(ByteCodeOpCode.Copy);
         defineVariable(global, type, false);
-        emit(OpCode.Pop);
+        emit(ByteCodeOpCode.Pop);
     }
 
     void compile(ListNode node) {
         int size = node.elements.size();
         for (int i = node.elements.size() - 1; i >= 0; i--)
             compile(node.elements.get(i));
-        emit(OpCode.MakeArray, size);
+        emit(ByteCodeOpCode.MakeArray, size);
     }
 
     void compile(MapNode node) {
@@ -1635,7 +1632,7 @@ public class Compiler {
             compile(entry.getKey());
             compile(entry.getValue());
         }
-        emit(OpCode.MakeMap, size);
+        emit(ByteCodeOpCode.MakeMap, size);
     }
 
 }

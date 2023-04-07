@@ -1,11 +1,10 @@
 package language.frontend.parser.nodes.operations;
 
-import language.frontend.parser.nodes.values.*;
-import language.frontend.parser.nodes.NodeType;
 import language.frontend.lexer.token.TokenType;
-
-import language.vm.VirtualMachine;
 import language.frontend.parser.nodes.Node;
+import language.frontend.parser.nodes.NodeType;
+import language.frontend.parser.nodes.values.*;
+import language.vm.VirtualMachine;
 
 import java.util.*;
 

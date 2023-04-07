@@ -1,5 +1,6 @@
 import dtool.DtoolRuntime;
 import dtool.io.ProjectFolder;
+import language.backend.compiler.CompileType;
 
 public class Testing {
 
@@ -11,7 +12,7 @@ public class Testing {
         args = new String[]{"test"};
 
         DtoolRuntime test = DtoolRuntime
-                .create(ProjectFolder.of("./source_testing"));
+                .create(ProjectFolder.of("std"));
 
         test.init();
         // frontend
@@ -19,7 +20,8 @@ public class Testing {
         test.processParser();
         // backend
         test.processPreCompiler();
-        test.processCompiler();
+        test.processCompiler(CompileType.CUSTOM_IR);
+        test.processCompiler(CompileType.ASM_64x86);
         // finish
         test.processFinalize();
 

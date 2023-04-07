@@ -59,7 +59,7 @@ object MethodHolder {
 
 class Test {
 
-    method static main(args) {
+    method static main(args: any) {
 
         var start = epoch();
 
@@ -121,7 +121,7 @@ class Test {
 
         println("Method returns: " + returnType);
 
-        var time = |float| (epoch() - start);
+        var time = |f32| (epoch() - start);
 
         println(str(time) + " ms");
     }

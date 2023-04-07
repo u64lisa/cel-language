@@ -1,16 +1,48 @@
 package "test";
 
-var start = epoch();
+#main Test;
 
-println("starting...");
-
-function fib(x: long) -> long {
+inline fib(x: i128) -> i128 {
     #optimize;
     if (x <= 1) return x;
 
     return fib(x - 1) + fib(x - 2);
 }
-println(fib(47));
 
-var time = |float| (epoch() - start);
-println(str(time) + " ms");
+inline itrFib(x: i128) -> i128 {
+    let fib1 = 1;
+    let fib2 = 1;
+
+    let f = fib1;
+
+    #optimize;
+    for (i -> 1:x) {
+        f => fib1 + fib2;
+        fib1 => fib2;
+        fib2 => f;
+    }
+
+    return f;
+}
+
+class Test {
+
+    method static main(args) -> void {
+        var start = epoch();
+
+        println("starting...");
+
+        println(itrFib(47));
+        println(fib(47));
+
+        let sub = itrFib(47) - fib(47);
+
+        println(sub);
+
+        var time = |f32| (epoch() - start);
+        println(str(time) + " ms");
+    }
+
+
+}
+

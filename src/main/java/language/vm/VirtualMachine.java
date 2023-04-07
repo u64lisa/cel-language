@@ -1,8 +1,9 @@
 package language.vm;
 
+import dtool.logger.ImplLogger;
+import dtool.logger.Logger;
+import language.backend.compiler.bytecode.ByteCodeOpCode;
 import language.backend.compiler.bytecode.CompilerStack;
-import language.backend.compiler.bytecode.Disassembler;
-import language.backend.compiler.bytecode.OpCode;
 import language.backend.compiler.bytecode.headers.HeadCode;
 import language.backend.compiler.bytecode.headers.MemoCache;
 import language.backend.compiler.bytecode.types.Type;
@@ -13,13 +14,13 @@ import language.backend.compiler.bytecode.values.bytecode.*;
 import language.backend.compiler.bytecode.values.classes.*;
 import language.backend.compiler.bytecode.values.enums.LanguageEnum;
 import language.backend.compiler.bytecode.values.enums.LanguageEnumChild;
+import language.utils.Pair;
 import language.vm.library.LibraryClassLoader;
 import language.vm.library.NativeContext;
-import dtool.logger.ImplLogger;
-import dtool.logger.Logger;
-import language.utils.Pair;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class VirtualMachine {
 
@@ -36,6 +37,8 @@ public class VirtualMachine {
     public static final int FRAMES_MAX = 256;
 
     private static final MemoCache MEMO_CACHE = new MemoCache();
+
+    private final ExecutorService executorService = Executors.newCachedThreadPool();
 
     private static VirtualMachine instance;
 
@@ -54,8 +57,6 @@ public class VirtualMachine {
 
     public CallFrame frame;
     public final CompilerStack<CallFrame> frames;
-
-    private final Disassembler disassembler;
 
     private String mainFunction;
     private String mainClass;
@@ -78,7 +79,6 @@ public class VirtualMachine {
         instance = this;
 
         this.stack = new CompilerStack<>(MAX_STACK_SIZE);
-        this.disassembler = new Disassembler("vm");
 
         push(new Value(closure));
 
@@ -295,7 +295,7 @@ public class VirtualMachine {
         Value a = pop();
 
         switch (op) {
-            case OpCode.Add -> {
+            case ByteCodeOpCode.Add -> {
                 if (a.isString)
                     push(new Value(a.asString() + b.asString()));
                 else if (a.isList) {
@@ -307,12 +307,12 @@ public class VirtualMachine {
                 else
                     push(new Value(a.asNumber() + b.asNumber()));
             }
-            case OpCode.Subtract -> {
+            case ByteCodeOpCode.Subtract -> {
                 if (canOverride(a, "sub"))
                     return runBin("sub", b, a.asInstance());
                 push(new Value(a.asNumber() - b.asNumber()));
             }
-            case OpCode.Multiply -> {
+            case ByteCodeOpCode.Multiply -> {
                 if (canOverride(a, "mul"))
                     return runBin("mul", b, a.asInstance());
                 if (a.isString) {
@@ -327,7 +327,7 @@ public class VirtualMachine {
                     push(new Value(a.asNumber() * b.asNumber()));
                 }
             }
-            case OpCode.Divide -> {
+            case ByteCodeOpCode.Divide -> {
                 if (canOverride(a, "div"))
                     return runBin("div", b, a.asInstance());
                 else if (a.isList) {
@@ -337,12 +337,12 @@ public class VirtualMachine {
                 } else
                     push(new Value(a.asNumber() / b.asNumber()));
             }
-            case OpCode.Modulo -> {
+            case ByteCodeOpCode.Modulo -> {
                 if (canOverride(a, "mod"))
                     return runBin("mod", b, a.asInstance());
                 push(new Value(a.asNumber() % b.asNumber()));
             }
-            case OpCode.Power -> {
+            case ByteCodeOpCode.Power -> {
                 if (canOverride(a, "fastpow"))
                     return runBin("fastpow", b, a.asInstance());
                 push(new Value(Math.pow(a.asNumber(), b.asNumber())));
@@ -356,10 +356,10 @@ public class VirtualMachine {
         Value a = pop();
 
         switch (op) {
-            case OpCode.Increment -> push(new Value(a.asNumber() + 1));
-            case OpCode.Decrement -> push(new Value(a.asNumber() - 1));
-            case OpCode.Negate -> push(new Value(-a.asNumber()));
-            case OpCode.Not -> push(new Value(!a.asBool()));
+            case ByteCodeOpCode.Increment -> push(new Value(a.asNumber() + 1));
+            case ByteCodeOpCode.Decrement -> push(new Value(a.asNumber() - 1));
+            case ByteCodeOpCode.Negate -> push(new Value(-a.asNumber()));
+            case ByteCodeOpCode.Not -> push(new Value(!a.asBool()));
         }
 
         return VirtualMachineResult.OK;
@@ -367,7 +367,7 @@ public class VirtualMachine {
 
     VirtualMachineResult globalOps(int op) {
         switch (op) {
-            case OpCode.DefineGlobal -> {
+            case ByteCodeOpCode.DefineGlobal -> {
                 String name = readString();
                 Value value = peek(0);
 
@@ -385,7 +385,7 @@ public class VirtualMachine {
                 GLOBAL_VAR_ARGS.put(name, new Var(value, constant, min, max));
                 return VirtualMachineResult.OK;
             }
-            case OpCode.GetGlobal -> {
+            case ByteCodeOpCode.GetGlobal -> {
                 String name = readString();
                 Var value = GLOBAL_VAR_ARGS.get(name);
 
@@ -400,7 +400,7 @@ public class VirtualMachine {
                 push(value.val);
                 return VirtualMachineResult.OK;
             }
-            case OpCode.SetGlobal -> {
+            case ByteCodeOpCode.SetGlobal -> {
                 String name = readString();
                 Value value = peek(0);
 
@@ -494,10 +494,10 @@ public class VirtualMachine {
 
     VirtualMachineResult attrOps(int op) {
         switch (op) {
-            case OpCode.GetAttr -> {
+            case ByteCodeOpCode.GetAttr -> {
                 return getBound(readString(), false);
             }
-            case OpCode.SetAttr -> {
+            case ByteCodeOpCode.SetAttr -> {
                 setBound(readString(), pop(), false);
                 push(new Value());
                 return VirtualMachineResult.OK;
@@ -513,7 +513,7 @@ public class VirtualMachine {
         Value a = pop();
 
         switch (op) {
-            case OpCode.EQUAL -> {
+            case ByteCodeOpCode.EQUAL -> {
                 if (b.isPattern) {
                     return matchPattern(a, b.asPattern());
                 }
@@ -524,13 +524,13 @@ public class VirtualMachine {
                 }
                 push(new Value(a.equals(b)));
             }
-            case OpCode.GreaterThan -> {
+            case ByteCodeOpCode.GreaterThan -> {
                 if (canOverride(b, "lte")) {
                     return runBin("lte", a, b.asInstance());
                 }
                 push(new Value(a.asNumber() > b.asNumber()));
             }
-            case OpCode.LessThan -> {
+            case ByteCodeOpCode.LessThan -> {
                 if (canOverride(a, "lt")) {
                     return runBin("lt", b, a.asInstance());
                 }
@@ -604,7 +604,7 @@ public class VirtualMachine {
 
     VirtualMachineResult localOps(int op) {
         switch (op) {
-            case OpCode.GetLocal -> {
+            case ByteCodeOpCode.GetLocal -> {
                 int slot = readByte();
                 if (stack.count - slot <= 0) {
                     runtimeError("Scope", "Undefined variable");
@@ -615,14 +615,14 @@ public class VirtualMachine {
                 push(val.asVar().val);
                 return VirtualMachineResult.OK;
             }
-            case OpCode.SetLocal -> {
+            case ByteCodeOpCode.SetLocal -> {
                 int slot = readByte();
 
                 Value var = get(slot);
                 Value val = peek(0);
                 return set(var.asVar(), val);
             }
-            case OpCode.DefineLocal -> {
+            case ByteCodeOpCode.DefineLocal -> {
                 Value val = pop();
                 //noinspection DuplicatedCode
                 boolean constant = readByte() == 1;
@@ -649,16 +649,16 @@ public class VirtualMachine {
 
     VirtualMachineResult loopOps(int op) {
         switch (op) {
-            case OpCode.Loop -> {
+            case ByteCodeOpCode.Loop -> {
                 int offset = readByte();
                 moveIP(-offset);
             }
-            case OpCode.StartCache -> {
+            case ByteCodeOpCode.StartCache -> {
                 currentLoop = new ArrayList<>();
                 loopCache.push(currentLoop);
             }
-            case OpCode.CollectLoop -> currentLoop.add(pop());
-            case OpCode.FlushLoop -> {
+            case ByteCodeOpCode.CollectLoop -> currentLoop.add(pop());
+            case ByteCodeOpCode.FlushLoop -> {
                 push(new Value(loopCache.pop()));
                 if (loopCache.isEmpty())
                     currentLoop = null;
@@ -672,9 +672,9 @@ public class VirtualMachine {
 
     VirtualMachineResult jumpOps(int op) {
         int offset = switch (op) {
-            case OpCode.JumpIfFalse -> readByte() * isFalsey(peek(0));
-            case OpCode.JumpIfTrue -> readByte() * (1 - isFalsey(peek(0)));
-            case OpCode.Jump -> readByte();
+            case ByteCodeOpCode.JumpIfFalse -> readByte() * isFalsey(peek(0));
+            case ByteCodeOpCode.JumpIfTrue -> readByte() * (1 - isFalsey(peek(0)));
+            case ByteCodeOpCode.Jump -> readByte();
             default -> throw new IllegalStateException("Unexpected value: " + op);
         };
         moveIP(offset);
@@ -700,7 +700,7 @@ public class VirtualMachine {
 
     VirtualMachineResult upvalueOps(int op) {
         switch (op) {
-            case OpCode.GetUpvalue -> {
+            case ByteCodeOpCode.GetUpvalue -> {
                 int slot = readByte();
                 if (frame.closure.upvalues[slot] == null) {
                     runtimeError("Scope", "Undefined variable");
@@ -708,7 +708,7 @@ public class VirtualMachine {
                 }
                 push(frame.closure.upvalues[slot].val);
             }
-            case OpCode.SetUpvalue -> {
+            case ByteCodeOpCode.SetUpvalue -> {
                 int slot = readByte();
                 return set(frame.closure.upvalues[slot], peek(0));
             }
@@ -719,11 +719,11 @@ public class VirtualMachine {
 
     VirtualMachineResult byteOps(int op) {
         switch (op) {
-            case OpCode.ToBytes -> {
+            case ByteCodeOpCode.ToBytes -> {
                 push(new Value(pop().asBytes()));
                 return VirtualMachineResult.OK;
             }
-            case OpCode.FromBytes -> {
+            case ByteCodeOpCode.FromBytes -> {
                 if (!peek(0).isBytes) {
                     runtimeError("Type", "Expected bytes");
                     return VirtualMachineResult.ERROR;
@@ -780,7 +780,7 @@ public class VirtualMachine {
 
     VirtualMachineResult collections(int op) {
         switch (op) {
-            case OpCode.Get, OpCode.Index -> {
+            case ByteCodeOpCode.Get, ByteCodeOpCode.Index -> {
                 Value index = pop();
                 Value collection = pop();
 
@@ -798,8 +798,8 @@ public class VirtualMachine {
                         }
                     }
                     push(list.get(idx));
-                } else if (canOverride(collection, op == OpCode.Get ? "get" : "bracket")) {
-                    return runBin(op == OpCode.Get ? "get" : "bracket", index, collection.asInstance());
+                } else if (canOverride(collection, op == ByteCodeOpCode.Get ? "get" : "bracket")) {
+                    return runBin(op == ByteCodeOpCode.Get ? "get" : "bracket", index, collection.asInstance());
                 } else if (collection.isMap) {
                     push(collection.get(index));
                 }
@@ -823,49 +823,49 @@ public class VirtualMachine {
 
     VirtualMachineResult bitOps(int instruction) {
         switch (instruction) {
-            case OpCode.BitAnd -> {
+            case ByteCodeOpCode.BitAnd -> {
                 Value b = pop();
                 Value a = pop();
                 push(new Value(
                         bitOp(a.asNumber(), b.asNumber(), (left, right) -> left & right)
                 ));
             }
-            case OpCode.BitOr -> {
+            case ByteCodeOpCode.BitOr -> {
                 Value b = pop();
                 Value a = pop();
                 push(new Value(
                         bitOp(a.asNumber(), b.asNumber(), (left, right) -> left | right)
                 ));
             }
-            case OpCode.BitXor -> {
+            case ByteCodeOpCode.BitXor -> {
                 Value b = pop();
                 Value a = pop();
                 push(new Value(
                         bitOp(a.asNumber(), b.asNumber(), (left, right) -> left ^ right)
                 ));
             }
-            case OpCode.LeftShift -> {
+            case ByteCodeOpCode.LeftShift -> {
                 Value b = pop();
                 Value a = pop();
                 push(new Value(
                         bitOp(a.asNumber(), b.asNumber(), (left, right) -> left << right)
                 ));
             }
-            case OpCode.RightShift -> {
+            case ByteCodeOpCode.RightShift -> {
                 Value b = pop();
                 Value a = pop();
                 push(new Value(
                         bitOp(a.asNumber(), b.asNumber(), (left, right) -> left >>> right)
                 ));
             }
-            case OpCode.SignRightShift -> {
+            case ByteCodeOpCode.SignRightShift -> {
                 Value b = pop();
                 Value a = pop();
                 push(new Value(
                         bitOp(a.asNumber(), b.asNumber(), (left, right) -> left >> right)
                 ));
             }
-            case OpCode.BitCompl -> {
+            case ByteCodeOpCode.BitCompl -> {
                 Value a = pop();
                 push(new Value(
                         bitOp(a.asNumber(), 0, (left, right) -> ~left)
@@ -1025,8 +1025,10 @@ public class VirtualMachine {
         if (closure.byteCode.async) {
             VirtualMachine thread = new VirtualMachine(closure.byteCode.copy());
             thread.tracebacks.push(traceback);
-            Thread t = new Thread(thread::run);
-            t.start();
+
+            executorService.submit(() -> {
+                thread.run();
+            });
         } else {
             tracebacks.push(traceback);
 
@@ -1083,11 +1085,11 @@ public class VirtualMachine {
 
     VirtualMachineResult refOps(int op) {
         switch (op) {
-            case OpCode.Ref -> {
+            case ByteCodeOpCode.Ref -> {
                 push(new Value(pop()));
                 return VirtualMachineResult.OK;
             }
-            case OpCode.Deref -> {
+            case ByteCodeOpCode.Deref -> {
                 if (!peek(0).isRef) {
                     runtimeError("Type", "Can't dereference non-ref");
                     return VirtualMachineResult.ERROR;
@@ -1095,7 +1097,7 @@ public class VirtualMachine {
                 push(pop().asRef());
                 return VirtualMachineResult.OK;
             }
-            case OpCode.SetRef -> {
+            case ByteCodeOpCode.SetRef -> {
                 if (!peek(0).isRef) {
                     runtimeError("Type", "Can't set non-ref");
                     return VirtualMachineResult.ERROR;
@@ -1109,7 +1111,7 @@ public class VirtualMachine {
 
     VirtualMachineResult freeOps(int op) {
         switch (op) {
-            case OpCode.DropGlobal -> {
+            case ByteCodeOpCode.DropGlobal -> {
                 String name = readString();
                 if (GLOBAL_VAR_ARGS.containsKey(name)) {
                     GLOBAL_VAR_ARGS.remove(name);
@@ -1119,7 +1121,7 @@ public class VirtualMachine {
                     return VirtualMachineResult.ERROR;
                 }
             }
-            case OpCode.DropLocal -> {
+            case ByteCodeOpCode.DropLocal -> {
                 int slot = readByte();
                 if (slot + frame.slots == stack.count - 1) {
                     stack.pop();
@@ -1127,7 +1129,7 @@ public class VirtualMachine {
                 stack.set(slot + frame.slots, null);
                 return VirtualMachineResult.OK;
             }
-            case OpCode.DropUpvalue -> {
+            case ByteCodeOpCode.DropUpvalue -> {
                 int slot = readByte();
                 if (slot == frame.closure.upvalueCount - 1) {
                     frame.closure.upvalueCount--;
@@ -1141,11 +1143,11 @@ public class VirtualMachine {
 
     VirtualMachineResult pattern(int op) {
         switch (op) {
-            case OpCode.PatternVars -> {
+            case ByteCodeOpCode.PatternVars -> {
                 push(Value.patternBinding(readString()));
                 return VirtualMachineResult.OK;
             }
-            case OpCode.Pattern -> {
+            case ByteCodeOpCode.Pattern -> {
                 int fieldCount = readByte();
 
                 Map<String, Value> cases = new HashMap<>();
@@ -1178,14 +1180,10 @@ public class VirtualMachine {
         int exitLevel = frames.count - 1;
 
         while (true) {
-            if (SYSTEM_LOGGER.isDebugging()) {
-                disassembler.disassembleInstruction(frame.closure.byteCode.chunk, frame.ip);
-            }
-
             int instruction = readByte();
             VirtualMachineResult res;
             switch (instruction) {
-                case OpCode.Return -> {
+                case ByteCodeOpCode.Return -> {
                     Value result = pop();
                     if (frame.catchError) result = new Value(new Result(result));
                     CallFrame frame = frames.pop();
@@ -1223,11 +1221,11 @@ public class VirtualMachine {
 
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.Constant -> {
+                case ByteCodeOpCode.Constant -> {
                     push(readConstant());
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.Assert -> {
+                case ByteCodeOpCode.Assert -> {
                     Value value = pop();
                     if (isFalsey(value) == 1) {
                         runtimeError("Assertion", "Assertion failed");
@@ -1237,14 +1235,14 @@ public class VirtualMachine {
                     push(value);
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.Pattern, OpCode.PatternVars -> res = pattern(instruction);
-                case OpCode.Throw -> {
+                case ByteCodeOpCode.Pattern, ByteCodeOpCode.PatternVars -> res = pattern(instruction);
+                case ByteCodeOpCode.Throw -> {
                     Value type = pop();
                     Value reason = pop();
                     runtimeError(type.asString(), reason.asString());
                     res = VirtualMachineResult.ERROR;
                 }
-                case OpCode.Import -> {
+                case ByteCodeOpCode.Import -> {
                     String name = readString();
                     String varName = readString();
 
@@ -1283,7 +1281,7 @@ public class VirtualMachine {
                     push(space);
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.Enum -> {
+                case ByteCodeOpCode.Enum -> {
                     Value enumerator = readConstant();
                     GLOBAL_VAR_ARGS.put(enumerator.asEnum().name(), new Var(
                             enumerator,
@@ -1304,37 +1302,37 @@ public class VirtualMachine {
 
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.Copy -> {
+                case ByteCodeOpCode.Copy -> {
                     push(pop().shallowCopy());
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.Iter -> res = iterator();
-                case OpCode.Spread -> {
+                case ByteCodeOpCode.Iter -> res = iterator();
+                case ByteCodeOpCode.Spread -> {
                     push(new Value(new Spread(pop().asList())));
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.Ref, OpCode.Deref, OpCode.SetRef -> res = refOps(instruction);
-                case OpCode.Add, OpCode.Subtract, OpCode.Multiply, OpCode.Divide, OpCode.Modulo, OpCode.Power ->
+                case ByteCodeOpCode.Ref, ByteCodeOpCode.Deref, ByteCodeOpCode.SetRef -> res = refOps(instruction);
+                case ByteCodeOpCode.Add, ByteCodeOpCode.Subtract, ByteCodeOpCode.Multiply, ByteCodeOpCode.Divide, ByteCodeOpCode.Modulo, ByteCodeOpCode.Power ->
                         res = binary(instruction);
-                case OpCode.Increment, OpCode.Decrement, OpCode.Negate, OpCode.Not -> res = unary(instruction);
-                case OpCode.FromBytes, OpCode.ToBytes -> res = byteOps(instruction);
-                case OpCode.EQUAL, OpCode.GreaterThan, OpCode.LessThan -> res = comparison(instruction);
-                case OpCode.Null -> {
+                case ByteCodeOpCode.Increment, ByteCodeOpCode.Decrement, ByteCodeOpCode.Negate, ByteCodeOpCode.Not -> res = unary(instruction);
+                case ByteCodeOpCode.FromBytes, ByteCodeOpCode.ToBytes -> res = byteOps(instruction);
+                case ByteCodeOpCode.EQUAL, ByteCodeOpCode.GreaterThan, ByteCodeOpCode.LessThan -> res = comparison(instruction);
+                case ByteCodeOpCode.Null -> {
                     push(new Value());
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.Get, OpCode.Index -> res = collections(instruction);
-                case OpCode.Pop -> {
+                case ByteCodeOpCode.Get, ByteCodeOpCode.Index -> res = collections(instruction);
+                case ByteCodeOpCode.Pop -> {
                     pop();
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.DefineGlobal, OpCode.GetGlobal, OpCode.SetGlobal -> res = globalOps(instruction);
-                case OpCode.GetLocal, OpCode.SetLocal, OpCode.DefineLocal -> res = localOps(instruction);
-                case OpCode.JumpIfFalse, OpCode.JumpIfTrue, OpCode.Jump -> res = jumpOps(instruction);
-                case OpCode.Loop, OpCode.StartCache, OpCode.CollectLoop, OpCode.FlushLoop -> res = loopOps(instruction);
-                case OpCode.For -> res = forLoop();
-                case OpCode.Call -> res = call();
-                case OpCode.Closure -> {
+                case ByteCodeOpCode.DefineGlobal, ByteCodeOpCode.GetGlobal, ByteCodeOpCode.SetGlobal -> res = globalOps(instruction);
+                case ByteCodeOpCode.GetLocal, ByteCodeOpCode.SetLocal, ByteCodeOpCode.DefineLocal -> res = localOps(instruction);
+                case ByteCodeOpCode.JumpIfFalse, ByteCodeOpCode.JumpIfTrue, ByteCodeOpCode.Jump -> res = jumpOps(instruction);
+                case ByteCodeOpCode.Loop, ByteCodeOpCode.StartCache, ByteCodeOpCode.CollectLoop, ByteCodeOpCode.FlushLoop -> res = loopOps(instruction);
+                case ByteCodeOpCode.For -> res = forLoop();
+                case ByteCodeOpCode.Call -> res = call();
+                case ByteCodeOpCode.Closure -> {
                     ByteCode func = readConstant().asFunc();
                     int defaultCount = readByte();
                     Closure closure = new Closure(func);
@@ -1371,11 +1369,11 @@ public class VirtualMachine {
 
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.GetAttr, OpCode.SetAttr -> res = attrOps(instruction);
-                case OpCode.GetUpvalue, OpCode.SetUpvalue -> res = upvalueOps(instruction);
-                case OpCode.BitAnd, OpCode.BitOr, OpCode.BitXor, OpCode.LeftShift, OpCode.RightShift, OpCode.SignRightShift, OpCode.BitCompl ->
+                case ByteCodeOpCode.GetAttr, ByteCodeOpCode.SetAttr -> res = attrOps(instruction);
+                case ByteCodeOpCode.GetUpvalue, ByteCodeOpCode.SetUpvalue -> res = upvalueOps(instruction);
+                case ByteCodeOpCode.BitAnd, ByteCodeOpCode.BitOr, ByteCodeOpCode.BitXor, ByteCodeOpCode.LeftShift, ByteCodeOpCode.RightShift, ByteCodeOpCode.SignRightShift, ByteCodeOpCode.BitCompl ->
                         res = bitOps(instruction);
-                case OpCode.Chain -> {
+                case ByteCodeOpCode.Chain -> {
                     Value b = pop();
                     Value a = pop();
                     if (a.isNull) {
@@ -1385,7 +1383,7 @@ public class VirtualMachine {
                     }
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.MakeArray -> {
+                case ByteCodeOpCode.MakeArray -> {
                     int count = readByte();
                     List<Value> array = new ArrayList<>();
                     for (int i = 0; i < count; i++)
@@ -1393,7 +1391,7 @@ public class VirtualMachine {
                     push(new Value(array));
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.MakeMap -> {
+                case ByteCodeOpCode.MakeMap -> {
                     int count = readByte();
                     Map<Value, Value> map = new HashMap<>();
                     for (int i = 0; i < count; i++) {
@@ -1404,7 +1402,7 @@ public class VirtualMachine {
                     push(new Value(map));
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.Class -> {
+                case ByteCodeOpCode.Class -> {
                     String name = readString();
                     boolean hasSuper = readByte() == 1;
                     LanguageClass superClass = hasSuper ? pop().asClass() : null;
@@ -1427,11 +1425,11 @@ public class VirtualMachine {
                     push(new Value(new LanguageClass(name, attributes, genericNames, superClass)));
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.Method -> {
+                case ByteCodeOpCode.Method -> {
                     defineMethod(readString());
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.MakeVar -> {
+                case ByteCodeOpCode.MakeVar -> {
                     int slot = readByte();
                     boolean constant = readByte() == 1;
 
@@ -1440,18 +1438,14 @@ public class VirtualMachine {
                     stack.set(frame.slots + slot, new Value(new Var(at, constant)));
                     res = VirtualMachineResult.OK;
                 }
-                case OpCode.Access -> res = access();
-                case OpCode.DropGlobal, OpCode.DropLocal, OpCode.DropUpvalue -> res = freeOps(instruction);
-                case OpCode.Destruct -> res = destruct();
-                case OpCode.TypeDef -> res = typeDef();
-                case OpCode.Header -> res = header();
+                case ByteCodeOpCode.Access -> res = access();
+                case ByteCodeOpCode.DropGlobal, ByteCodeOpCode.DropLocal, ByteCodeOpCode.DropUpvalue -> res = freeOps(instruction);
+                case ByteCodeOpCode.Destruct -> res = destruct();
+                case ByteCodeOpCode.Header -> res = header();
                 default -> throw new RuntimeException("Unknown opcode: " + instruction);
             }
 
             if (res == VirtualMachineResult.EXIT) {
-                if (SYSTEM_LOGGER.isDebugging())
-                    disassembler.finish();
-
                 return VirtualMachineResult.OK;
             } else if (res == VirtualMachineResult.ERROR) {
                 if (frame.catchError) {
@@ -1486,14 +1480,6 @@ public class VirtualMachine {
                 return VirtualMachineResult.ERROR;
             }
         }
-    }
-
-    VirtualMachineResult typeDef() {
-        readByte();
-        readString();
-        readString();
-
-        return VirtualMachineResult.OK;
     }
 
     VirtualMachineResult destruct() {
@@ -1533,22 +1519,18 @@ public class VirtualMachine {
         }
 
         switch (command) {
-            case HeadCode.OPTIMIZE:
+            case HeadCode.OPTIMIZE -> {
                 if (frame.optimization == 0)
                     frame.optimization = 1;
-                break;
-            case HeadCode.MAIN_FUNCTION:
-                mainFunction = args[0];
-                break;
-            case HeadCode.MAIN_CLASS:
-                mainClass = args[0];
-                break;
-            case HeadCode.EXPORT:
+            }
+            case HeadCode.MAIN_FUNCTION -> mainFunction = args[0];
+            case HeadCode.MAIN_CLASS -> mainClass = args[0];
+            case HeadCode.EXPORT -> {
                 if (exports == null) {
                     exports = new ArrayList<>();
                 }
                 exports.addAll(Arrays.asList(args));
-                break;
+            }
         }
 
         push(new Value());
@@ -1623,10 +1605,6 @@ public class VirtualMachine {
 
     public Namespace asNamespace(String name) {
         return new Namespace(name, GLOBAL_VAR_ARGS, exports == null ? new ArrayList<>(GLOBAL_VAR_ARGS.keySet()) : exports);
-    }
-
-    public int indexToLine(String code, int index) {
-        return code.substring(0, index).split("\n").length - 1;
     }
 
     public String repeat(String str, int times) {

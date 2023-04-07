@@ -1,10 +1,9 @@
 package language.frontend.parser.units;
 
 import dtool.DefaultDtoolRuntime;
+import dtool.DtoolRuntime;
 import dtool.logger.ImplLogger;
 import dtool.logger.Logger;
-import dtool.logger.errors.LanguageException;
-import language.backend.compiler.bytecode.Compiler;
 import language.frontend.lexer.Lexer;
 import language.frontend.lexer.token.Token;
 import language.frontend.parser.Parser;
@@ -13,17 +12,9 @@ import language.frontend.parser.nodes.NodeType;
 import language.frontend.parser.nodes.expressions.BodyNode;
 import language.frontend.parser.nodes.expressions.ImportNode;
 import language.frontend.parser.results.ParseResult;
-import language.utils.Pair;
-import language.utils.sneak.SneakyThrow;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 public class Linker {
@@ -34,7 +25,10 @@ public class Linker {
 
     private final HashMap<String, List<Node>> projectImports = new HashMap<>();
 
-    public Linker(List<Node> abstractSyntaxTree) {
+    private final DtoolRuntime runtime;
+
+    public Linker(final DtoolRuntime runtime, List<Node> abstractSyntaxTree) throws Exception {
+        this.runtime = runtime;
         this.abstractSyntaxTree = abstractSyntaxTree;
         this.extractImports(abstractSyntaxTree);
     }
@@ -56,16 +50,16 @@ public class Linker {
         return nodes;
     }
 
-    void extractImports(final List<Node> nodes) {
+    void extractImports(final List<Node> nodes) throws Exception {
         for (Node node : nodes) {
             if (node instanceof final ImportNode importNode && node.getNodeType() == NodeType.IMPORT) {
 
-                if (projectImports.containsKey(importNode.fileName.asString()))
+                if (projectImports.containsKey(importNode.getFileName().asString()))
                     continue;
 
                 final List<Node> importAst = this.resolveImportAst(importNode);
 
-                projectImports.put(importNode.fileName.asString(), importAst);
+                projectImports.put(importNode.getFileName().asString(), importAst);
 
                 if (importAst.stream().anyMatch(stream -> stream.getNodeType() == NodeType.IMPORT))
                     this.extractImports(importAst);
@@ -76,95 +70,39 @@ public class Linker {
     }
 
 
-    List<Node> resolveImportAst(ImportNode node) {
+    List<Node> resolveImportAst(ImportNode node) throws Exception {
+        final String importedFile = node.getFileName().asString()
+                .replace("|", "/");
 
-        try {
-            String fileName = Paths.get(System.getProperty("execution_compile_directory"))
-                    .toFile()
-                    .getAbsolutePath()
-                    .replace("\\.\\", "\\")
-                    .replace("\\..\\", "\\")
-                    + File.separator +
-                    node.fileName
-                            .asString()
-                            .replace('.', File.separatorChar) + DefaultDtoolRuntime.SRC_FILE_SUFFIX;
+        final String projectPath = runtime.getSourcePath()
+                + File.separator + importedFile + DefaultDtoolRuntime.SRC_FILE_SUFFIX;
 
-            if (node.fileName.asString().toLowerCase(Locale.ROOT).contains("std")) {
-                return SneakyThrow.sneak(() -> {
+        final Path path = Path.of(projectPath);
+        final File sourceFile = path.toFile();
 
-                    final String internalPath = "./std/" + (node.fileName
-                            .asString()
-                            .toLowerCase(Locale.ROOT))
-                            .replaceAll("::", "/")
-                            .replace("std/", "")
+        if (sourceFile.exists() && sourceFile.isFile()) {
+            Scanner scanner = new Scanner(sourceFile);
+            final String fileContent = scanner.useDelimiter("\\A").next();
+            scanner.close();
 
-                            + DefaultDtoolRuntime.SRC_FILE_SUFFIX;
+            Lexer lexer = new Lexer(projectPath, fileContent);
+            List<Token> tokens = lexer.lex();
 
-                    final InputStream stdLibrary = Compiler.class.getClassLoader().getResourceAsStream(internalPath);
-                    if (stdLibrary == null)
-                        throw new IOException("Internal file not found: " + internalPath);
+            Parser parser = Parser.getParser(tokens);
 
-                    final StringBuilder library = new StringBuilder();
-                    final Scanner scanner = new Scanner(stdLibrary);
-
-                    while (scanner.hasNextLine())
-                        library.append(scanner.nextLine()).append("\n");
-
-                    Pair<List<Node>, LanguageException> ast = getAst(fileName, library.toString());
-
-                    if (ast.getLast() != null) {
-                        SYSTEM_LOGGER.fail(fileName, library.toString(), ast.getLast());
-                        return null;
-                    }
-
-                    return (ast.getFirst());
-                });
-            }
-            Path path = Path.of(fileName);
-            if (Files.exists(path)) {
-
-                Pair<List<Node>, LanguageException> ast = getAst(fileName, readString(path));
-
-                if (ast.getLast() != null) {
-                    SYSTEM_LOGGER.fail(fileName, readString(path), ast.getLast());
-                    return null;
-                }
-
-                return (ast.getFirst());
+            ParseResult<Node> ast = parser.parse();
+            if (ast.getLanguageError() != null) {
+                SYSTEM_LOGGER.fail(importedFile,
+                        fileContent, ast.getLanguageError());
+                return null;
             }
 
-            throw new IOException("File not found");
-        } catch (final Throwable throwable) {
-            SYSTEM_LOGGER.fail("", "", new LanguageException(LanguageException.Type.COMPILER,
-                    node.getStartPosition(), node.getEndPosition(),
-                    "Import Error", "Couldn't import file (" + throwable.getMessage() + ")"));
-            return null;
+            BodyNode body = (BodyNode) ast.getNode().optimize();
+            return body.statements;
         }
+
+        throw new RuntimeException("tried to import file that does not exist '" + projectPath + "'!");
     }
 
-    public Pair<List<Node>, LanguageException> getAst(String file, String context) {
-        Lexer lexer = new Lexer(file, context);
-        List<Token> tokens = lexer.lex();
-
-        Parser parser = Parser.getParser(tokens);
-
-        ParseResult<Node> ast = parser.parse();
-        if (ast.getLanguageError() != null)
-            return new Pair<>(null, ast.getLanguageError());
-
-        BodyNode body = (BodyNode) ast.getNode().optimize();
-        return new Pair<>(body.statements, null);
-    }
-
-    public String readString(Path path) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        try (BufferedReader br = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                sb.append(line).append("\n");
-            }
-        }
-        return sb.toString();
-    }
 
 }

@@ -12,11 +12,10 @@ import dtool.source.SourceFile;
 import dtool.source.SourceSuffix;
 import dtool.source.scan.DirectoryScanner;
 import dtool.utils.DynamicOptional;
+import language.backend.compiler.AbstractCompiler;
+import language.backend.compiler.CompileType;
 import language.backend.compiler.bytecode.ChunkBuilder;
-import language.backend.compiler.bytecode.Compiler;
-import language.backend.compiler.bytecode.FunctionType;
 import language.backend.compiler.bytecode.ir.Compressor;
-import language.backend.compiler.bytecode.types.objects.ClassObjectType;
 import language.backend.compiler.bytecode.values.bytecode.ByteCode;
 import language.frontend.lexer.Lexer;
 import language.frontend.lexer.token.Token;
@@ -27,16 +26,14 @@ import language.frontend.parser.results.ParseResult;
 import language.frontend.parser.units.Linker;
 import language.vm.VirtualMachine;
 import language.vm.VirtualMachineResult;
-import language.vm.library.LibraryClassLoader;
-import language.vm.library.NativeContext;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 public class DefaultDtoolRuntime extends DtoolRuntime {
@@ -55,21 +52,23 @@ public class DefaultDtoolRuntime extends DtoolRuntime {
     private final ProjectFolder projectFolder;
     private final DtoolConfig config;
 
+    private Path sourcePath;
+
     public DefaultDtoolRuntime(final ProjectFolder projectFolder) {
         this.projectFolder = projectFolder;
         this.config = new DtoolConfig(projectFolder.projectRoot(), DEFAULT_CONFIG_NAME);
     }
 
     @Override
-    public void init() {
+    public int init() {
         walker.walk(this.projectFolder, STRUCTURE);
         config.load();
+
+        return 1; // todo implement codes for create, alread there and such
     }
 
     @Override
     public void processLexer() {
-        Path sourcePath = null;
-
         if (config.getConfigTree()
                 .getProjectProperties()
                 .hasAttribute("source.path")) {
@@ -124,71 +123,100 @@ public class DefaultDtoolRuntime extends DtoolRuntime {
 
             // todo process macros and such
 
-            BodyNode body = (BodyNode) source.getAstNode().getValue().optimize();
+            BodyNode body = (BodyNode) source.getAstNode()
+                    .getValue().optimize();
 
-            final Linker classImportService = new Linker(body.statements);
-            source.getAst().setValue(classImportService.getMergedTree());
+            try {
+                Linker classImportService = new Linker(this, body.statements);
+                source.getAst().setValue(classImportService.getMergedTree());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
     @Override
-    public void processCompiler() {
-        for (SourceFile source : sources) {
-            System.out.printf("--------------------- %s -----------------%n", source.getFileName());
+    public void processCompiler(final CompileType compileType) {
 
-            // ()<> -> void
-            Compiler compiler = new Compiler(FunctionType.SOURCE, source.getSource(), ClassObjectType.EMPTY);
-            compiler.chunk().globals = new HashMap<>();
-            compiler.chunk().globals.putAll(LibraryClassLoader.LIBRARY_TYPES);
-            compiler.chunk().globals.putAll(NativeContext.GLOBAL_TYPES);
+        switch (compileType) {
 
-            ByteCode byteCode = compiler.compileBlock(source.getAst().getValue());
+            case ASM_64x86 -> {
+                final Path buildPath = Path.of(this.projectFolder.projectRoot(),
+                        DEFAULT_BUILD_FOLDER);
 
-            final byte[] dumped = COMPRESSOR.compress(byteCode.dumpBytes());
+                for (SourceFile source : sources) {
 
-            source.getByteCode().setValue(byteCode);
-            source.getDumpedByteCode().setValue(dumped);
-        }
+                    AbstractCompiler compiler = compileType.constructCompiler();
+                    byte[] compiled = compiler.compile(source.getSource(), source.getAst().getValue());
 
-        String mainClass = config.getConfigTree().getProjectProperties()
-                .getOrDefault("main", "?");
+                    final File outFile = new File(buildPath.toFile(), source.getFileName() + ".asm");
+                    if (outFile.exists())
+                        outFile.delete();
 
-        DynamicOptional<SourceFile> mainFile = new DynamicOptional<>();
+                    try {
+                        final FileOutputStream fileOutputStream = new FileOutputStream(outFile);
+                        fileOutputStream.write(compiled);
+                        fileOutputStream.flush();
+                        fileOutputStream.close();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
 
-        for (SourceFile source : sources) {
-            if (mainFile.isPresent())
-                break;
-
-            if (source.getFileName().equalsIgnoreCase(mainClass)) {
-                mainFile.setValue(source);
+                }
             }
-        }
+            case CUSTOM_IR -> {
 
-        if (!mainFile.isPresent())
-            throw new RuntimeException("Unable to find main class by name: " + mainClass);
+                for (SourceFile source : sources) {
 
-        final SourceFile mainEntry = mainFile.getValue();
+                    AbstractCompiler compiler = compileType.constructCompiler();
+                    byte[] compiled = compiler.compile(source.getSource(), source.getAst().getValue());
 
-        try {
-            final Path buildPath = Path.of(this.projectFolder.projectRoot().toString(),
-                    DEFAULT_BUILD_FOLDER);
+                    source.getByteCode().setValue(compiler.getByteCode());
+                    source.getDumpedByteCode().setValue(compiled);
+                }
 
-            final File outFile = new File(buildPath.toFile(), "out" + IR_FILE_SUFFIX);
+                String mainClass = config.getConfigTree().getProjectProperties()
+                        .getOrDefault("main", "?");
 
-            if (outFile.exists() && !outFile.delete())
-                throw new IllegalStateException("can't delete file");
+                DynamicOptional<SourceFile> mainFile = new DynamicOptional<>();
 
-            if (!outFile.createNewFile())
-                throw new IllegalStateException("can't create new file");
+                for (SourceFile source : sources) {
+                    if (mainFile.isPresent())
+                        break;
 
-            Files.write(outFile.toPath(), mainEntry.getDumpedByteCode().getValue(), StandardOpenOption.WRITE);
-        } catch (IOException e) {
-            e.printStackTrace();
-            LOGGER.fail(mainEntry.getPath(), mainEntry.getSource(), new LanguageException(
-                    LanguageException.Type.COMPILER,
-                    "Internal",
-                    "Could not write to file"
-            ));
+                    if (source.getFileName().equalsIgnoreCase(mainClass)) {
+                        mainFile.setValue(source);
+                    }
+                }
+
+                if (!mainFile.isPresent())
+                    throw new RuntimeException("Unable to find main class by name: " + mainClass);
+
+                final SourceFile mainEntry = mainFile.getValue();
+
+                try {
+                    final Path buildPath = Path.of(this.projectFolder.projectRoot().toString(),
+                            DEFAULT_BUILD_FOLDER);
+
+                    final File outFile = new File(buildPath.toFile(), "out" + IR_FILE_SUFFIX);
+
+                    if (outFile.exists() && !outFile.delete())
+                        throw new IllegalStateException("can't delete file");
+
+                    if (!outFile.createNewFile())
+                        throw new IllegalStateException("can't create new file");
+
+                    Files.write(outFile.toPath(), mainEntry.getDumpedByteCode().getValue(), StandardOpenOption.WRITE);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    LOGGER.fail(mainEntry.getPath(), mainEntry.getSource(), new LanguageException(
+                            LanguageException.Type.COMPILER,
+                            "Internal",
+                            "Could not write to file"
+                    ));
+                }
+            }
+
         }
     }
 
@@ -233,4 +261,8 @@ public class DefaultDtoolRuntime extends DtoolRuntime {
         return projectFolder;
     }
 
+    @Override
+    public Path getSourcePath() {
+        return sourcePath;
+    }
 }

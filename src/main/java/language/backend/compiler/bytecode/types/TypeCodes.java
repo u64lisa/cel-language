@@ -24,8 +24,6 @@ public class TypeCodes {
     public static final int BOOL = 0;
     public static final int BYTES = 1;
     public static final int MAP = 2;
-    public static final int FLOAT = 3;
-    public static final int INT = 4;
     public static final int LIST = 5;
     public static final int RESULT = 6;
     public static final int STRING = 7;
@@ -40,6 +38,8 @@ public class TypeCodes {
     public static final int NAMESPACE = 16;
     public static final int REFERENCE = 17;
 
+    public static final int FLOAT = 3;
+    public static final int INT = 4;
     public static final int LONG = 18;
     public static final int SHORT = 19;
     public static final int DOUBLE = 20;

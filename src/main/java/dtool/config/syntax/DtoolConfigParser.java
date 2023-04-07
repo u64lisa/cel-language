@@ -90,6 +90,19 @@ public class DtoolConfigParser {
                         this.configTree.getDevelopmentTag().put(owner, value);
                     }
                 }
+                case MODULE -> {
+                    this.advance();
+
+                    tryMatchOrError(DtoolTokenType.STRING);
+                    String path = current().value
+                            .substring(1, current().value.length() - 1);
+                    advance();
+
+                    tryMatchOrError(DtoolTokenType.NUMBER);
+                    String priority = current().value;
+
+                    // todo
+                }
                 case DEPEND_TAG -> {
                     advance();
 

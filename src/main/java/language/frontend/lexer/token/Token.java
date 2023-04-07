@@ -54,9 +54,8 @@ public class Token {
     @Override
     public boolean equals(Object o) {
         if (o == this) return true;
-        if (!(o instanceof Token)) return false;
+        if (!(o instanceof Token other)) return false;
 
-        Token other = (Token) o;
         if (value == null) return other.type == type && other.value == null;
         return other.type == type && value.equals(other.value);
     }

@@ -1,0 +1,9 @@
+Wrong usage please use as provided:
+
+java -jar cel.jar --<command> <arguments>
+                  --help
+                  --setup   <project>
+                  --compile <project>
+                  --check   <project>
+                  --test   <project>
+                  --execute <project> <args...>

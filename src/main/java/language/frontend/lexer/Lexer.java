@@ -17,10 +17,10 @@ public class Lexer {
             "yields", "destructor", "typedef", "assert", "let",
             "package", "throw", "structure", "do", "loop",
             "pass", "cal", "async", "import", "scope", "as",
-            "extend", "bin", "function", "attribute", "constant", "var",
+            "extend", "bin", "attribute", "constant", "var",
             "for", "while", "null", "if", "elseIf", "else", "return",
             "continue", "break", "method", "ingredients", "recipe", "class",
-            "object", "switch", "case", "function", "enum", "default",
+            "object", "switch", "case", "inline", "enum", "default",
             "match", "public", "private", "static", "placeholder", "compiler", "macro"
     };
     public final List<String> keywordList = Arrays.asList(keywords);

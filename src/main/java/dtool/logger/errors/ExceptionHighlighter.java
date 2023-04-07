@@ -47,8 +47,11 @@ public class ExceptionHighlighter {
     public String createFullError(PositionedError error) {
         StringBuilder sb = new StringBuilder();
 
+        String[] fileSplit = error.file().split("/\\./");
+        String fileSegment = fileSplit.length > 1 ? fileSplit[1] : error.file();
+
         Position position = error.languageException().positionStart();
-        sb.append(" --> (").append(error.file().split("/\\./")[1]).append(") (line: ").append(position.line() + 1)
+        sb.append(" --> (").append(fileSegment).append(") (line: ").append(position.line() + 1)
                 .append(", column: ").append(position.column() + 1).append(") ")
                 .append(createError(error, error.languageException().errorName()));
 

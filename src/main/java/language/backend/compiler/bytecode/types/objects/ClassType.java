@@ -39,8 +39,8 @@ public class ClassType extends Type {
 
         this.generics = generics;
         this.genericMap = new HashMap<>();
-        for (int i = 0; i < generics.length; i++) {
-            this.genericMap.put(generics[i].name, generics[i]);
+        for (GenericType generic : generics) {
+            this.genericMap.put(generic.name, generic);
         }
 
         if (parent != null) {
@@ -143,10 +143,9 @@ public class ClassType extends Type {
 
     @Override
     public boolean equals(Object other) {
-        if (!(other instanceof ClassType)) {
+        if (!(other instanceof ClassType otherType)) {
             return false;
         }
-        ClassType otherType = (ClassType) other;
         return identifier.equals(otherType.identifier) ||
                 Objects.equals(otherType, parent) ||
                 Objects.equals(this, otherType.parent) ||

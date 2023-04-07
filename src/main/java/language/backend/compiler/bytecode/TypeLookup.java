@@ -31,12 +31,12 @@ public class TypeLookup {
         this.compiler = compiler;
         this.types = new HashMap<>();
         // Builtin types
-        types.put("int", Types.INT);
-        types.put("float", Types.FLOAT);
-        types.put("long", Types.LONG);
-        types.put("double", Types.DOUBLE);
-        types.put("short", Types.SHORT);
-        types.put("byte", Types.BYTE);
+        types.put("i32", Types.INT);
+        types.put("f32", Types.FLOAT);
+        types.put("i128", Types.LONG);
+        types.put("i64", Types.DOUBLE);
+        types.put("i16", Types.SHORT);
+        types.put("i8", Types.BYTE);
 
         types.put("bool", Types.BOOL);
         types.put("String", Types.STRING);
@@ -52,14 +52,12 @@ public class TypeLookup {
         if (types.containsKey(name)) {
             return types.get(name);
         }
-        if (compiler.enclosingType instanceof ClassType) {
-            ClassType type = (ClassType) compiler.enclosingType;
+        if (compiler.enclosingType instanceof ClassType type) {
             if (type.genericMap.containsKey(name)) {
                 return type.genericMap.get(name);
             }
         }
-        if (compiler.enclosingType instanceof EnumChildType) {
-            EnumChildType type = (EnumChildType) compiler.enclosingType;
+        if (compiler.enclosingType instanceof EnumChildType type) {
             if (type.propertyGenericMap.containsKey(name)) {
                 return type.propertyGenericMap.get(name);
             }
@@ -67,6 +65,7 @@ public class TypeLookup {
         if (compiler.enclosing != null) {
             return compiler.enclosing.typeHandler.getType(name);
         }
+
         return null;
     }
 
@@ -136,8 +135,7 @@ public class TypeLookup {
             if (type == null) {
                 fail(String.format("Unknown type '%s'", header));
             }
-            if (type instanceof ClassType) {
-                ClassType classType = (ClassType) type;
+            if (type instanceof ClassType classType) {
                 List<Type> genericTypes = new ArrayList<>();
                 if ("(".equals(currentToken)) {
                     // Generic
@@ -209,70 +207,64 @@ public class TypeLookup {
 
     public Type resolve(Node statement) {
         switch (statement.getNodeType()) {
-            case USE:
-            case NULL:
-            case PASS:
-            case BREAK:
-            case CONTINUE:
-            case BODY:
-            case DESTRUCT:
-            case DYNAMIC_ASSIGN:
-            case LET:
-            case DROP:
-            case THROW:
-            case ASSERT:
-            case COMPILER:
-            case SWITCH:
-            case PATTERN:
-            case MACRO_DEFINITION:
-
-            case TYPE_DEFINITION:
+            case USE, NULL, PASS, BREAK, CONTINUE, BODY, DESTRUCT, DYNAMIC_ASSIGN, LET, DROP, THROW, ASSERT, COMPILER, SWITCH, PATTERN, MACRO_DEFINITION, TYPE_DEFINITION -> {
                 return Types.VOID;
-
-            case CAST:
+            }
+            case CAST -> {
                 return resolve(((CastNode) statement).type);
-
-            case BIN_OP:
+            }
+            case BIN_OP -> {
                 return resolve((BinOpNode) statement);
-            case UNARY_OPERATION:
+            }
+            case UNARY_OPERATION -> {
                 return resolve((UnaryOpNode) statement);
-
-            case DECORATOR:
+            }
+            case DECORATOR -> {
                 return resolve((DecoratorNode) statement);
-            case FUNCTION_DEFINITION:
-                return resolve((FunctionDeclareNode) statement);
-            case CALL:
+            }
+            case INLINE_DEFINITION -> {
+                return resolve((InlineDeclareNode) statement);
+            }
+            case CALL -> {
                 return resolve((CallNode) statement);
-            case RETURN:
+            }
+            case RETURN -> {
                 return resolve((ReturnNode) statement);
-            case SPREAD:
+            }
+            case SPREAD -> {
                 return Types.SPREAD;
-
-            case NUMBER: {
+            }
+            case NUMBER -> {
                 NumberNode node = (NumberNode) statement;
                 return (long) node.val == node.val ? Types.INT : Types.FLOAT;
             }
-            case STRING:
+            case STRING -> {
                 return Types.STRING;
-            case BOOLEAN:
+            }
+            case BOOLEAN -> {
                 return Types.BOOL;
-            case LIST:
+            }
+            case LIST -> {
                 return Types.LIST;
-            case MAP:
+            }
+            case MAP -> {
                 return Types.MAP;
-            case BYTES:
+            }
+            case BYTES -> {
                 return Types.BYTES;
-            case SCOPE:
+            }
 
-                // This is an if statement
-            case QUERY:
+            // This is an if statement
+            case SCOPE, QUERY -> {
                 return Types.ANY;
-
-            case ENUM:
+            }
+            case ENUM -> {
                 return resolve((EnumNode) statement);
-            case CLASS_DEFINITION:
+            }
+            case CLASS_DEFINITION -> {
                 return resolve((ClassDefNode) statement);
-            case CLASS_ACCESS: {
+            }
+            case CLASS_ACCESS -> {
                 ClassAccessNode node = (ClassAccessNode) statement;
                 Type clazz = resolve(node.className);
                 String attr = node.attributeName.getValue().toString();
@@ -286,7 +278,7 @@ public class TypeLookup {
                 }
                 return attrType;
             }
-            case ATTRIBUTE_ASSIGN: {
+            case ATTRIBUTE_ASSIGN -> {
                 AttributeAssignNode node = (AttributeAssignNode) statement;
                 Type newAttr = resolve(node.value);
                 String attr = node.name.getValue().toString();
@@ -298,7 +290,7 @@ public class TypeLookup {
                 }
                 return Types.VOID;
             }
-            case ATTRIBUTE_ACCESS: {
+            case ATTRIBUTE_ACCESS -> {
                 AttributeAccessNode node = (AttributeAccessNode) statement;
                 String attr = node.name.getValue().toString();
                 Type type = compiler.accessEnclosed(attr);
@@ -307,26 +299,28 @@ public class TypeLookup {
                 }
                 return type;
             }
-
-            case VAR_ACCESS:
+            case VAR_ACCESS -> {
                 return resolve((VarAccessNode) statement);
-            case VAR_ASSIGNMENT:
+            }
+            case VAR_ASSIGNMENT -> {
                 return resolve((VarAssignNode) statement);
-
-            case WHILE:
+            }
+            case WHILE -> {
                 return resolve((WhileNode) statement);
-            case FOR:
+            }
+            case FOR -> {
                 return resolve((ForNode) statement);
-            case ITERATOR:
+            }
+            case ITERATOR -> {
                 return resolve((IterNode) statement);
-
-            case REFERENCE:
+            }
+            case REFERENCE -> {
                 return resolve((RefNode) statement);
-            case DE_REF:
+            }
+            case DE_REF -> {
                 return resolve((DerefNode) statement);
-
-            default:
-                throw new RuntimeException("Unknown statement type: " + statement.getNodeType());
+            }
+            default -> throw new RuntimeException("Unknown statement type: " + statement.getNodeType());
         }
     }
 
@@ -334,6 +328,7 @@ public class TypeLookup {
         Type left = resolve(statement.left);
         Type right = resolve(statement.right);
         Type result = left.isCompatible(statement.operation, right);
+
         if (result == null) {
             compiler.error("Type", String.format("Cannot apply '%s' to '%s' and '%s'", statement.operation,
                     left, right));
@@ -360,7 +355,7 @@ public class TypeLookup {
         return result;
     }
 
-    private Type resolve(FunctionDeclareNode node) {
+    private Type resolve(InlineDeclareNode node) {
         // Insert generic types into type map
         GenericType[] generics = new GenericType[node.generics.size()];
         Set<String> removeLater = new HashSet<>();
@@ -412,6 +407,7 @@ public class TypeLookup {
         } else {
             result = resolve(node.nodeToReturn);
         }
+
         if (!compiler.classObjectType.returnType.equals(result)) {
             compiler.error("Return", "Return type must be the same as the function's return type");
         }
@@ -450,12 +446,13 @@ public class TypeLookup {
             if (!(unknownType instanceof ClassType)) {
                 compiler.error("Class", "Parent must be a class");
             }
+            assert unknownType instanceof ClassType;
             parent = (ClassType) unknownType;
         }
 
         Position constructorStart = node.make.getStartPosition();
         Position constructorEnd = node.make.getEndPosition();
-        FunctionDeclareNode constructorNode = new FunctionDeclareNode(
+        InlineDeclareNode constructorNode = new InlineDeclareNode(
                 new Token(TokenType.IDENTIFIER, "<make>", constructorStart, constructorEnd),
                 node.argumentNames,
                 node.argumentTypes,
@@ -501,15 +498,15 @@ public class TypeLookup {
                 fields.put(attr.name, attrType);
             }
         }
-        for (MethodDeclareNode meth : node.methods) {
-            String funcName = meth.name.getValue().toString();
-            if (meth.priv) {
+        for (MethodDeclareNode method : node.methods) {
+            String funcName = method.name.getValue().toString();
+            if (method.priv) {
                 privates.add(funcName);
             }
-            Type methType = resolve(meth.asFuncDef());
-            if (meth.stat) {
+            Type methType = resolve(method.asFuncDef());
+            if (method.stat) {
                 staticFields.put(funcName, methType);
-            } else if (meth.bin) {
+            } else if (method.bin) {
                 operators.put(funcName, methType);
             } else {
                 fields.put(funcName, methType);

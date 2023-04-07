@@ -12,7 +12,7 @@ public class HuffmanDecoder {
 
 		int header = in.readBits(32);
 		if (header != 1846) {
-			throw new IllegalArgumentException("Not a .grin file");
+			throw new IllegalArgumentException("Not a huffman file");
 		}
 
 		int numCodes = in.readBits(32);

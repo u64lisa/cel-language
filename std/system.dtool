@@ -1,0 +1,26 @@
+project.name = "your-project-name"
+project.version = "your-project-version"
+project.id = "your-id"
+project.main = "main"
+
+
+project.tree = "test"
+
+module "/submodule/" 1
+module "/submodule2/" 2
+module "/submodule3/" 3
+
+development {
+    // development tags
+    // author.name = "username"
+}
+
+depend {
+    // dependencies
+    // resolve "name:version:id" from "local"
+}
+
+plugins {
+    // plugins
+    // resolve "name:version:id" from "local"
+}

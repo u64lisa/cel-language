@@ -18,7 +18,7 @@ public class ReferenceType extends Type {
     }
 
     private void updateRef(Type ref) {
-        this.name = "[" + ref.name + "]";
+        this.name = "Ref[" + ref.name + "]";
         this.ref = ref;
     }
 
@@ -29,6 +29,11 @@ public class ReferenceType extends Type {
             return Types.VOID;
         }
         return null;
+    }
+
+    @Override
+    public Type isCompatible(TokenType operation, Type other) {
+        return this.ref.isCompatible(operation, other);
     }
 
     @Override
@@ -63,4 +68,9 @@ public class ReferenceType extends Type {
     public Type applyGenerics(Map<Type, Type> generics) {
         return new ReferenceType(ref.applyGenerics(generics));
     }
+
+    public Type getRef() {
+        return ref;
+    }
+
 }

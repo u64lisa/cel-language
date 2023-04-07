@@ -57,8 +57,8 @@ public class MethodDeclareNode extends Node {
         return this;
     }
 
-    public FunctionDeclareNode asFuncDef() {
-        return new FunctionDeclareNode(name, argumentNames, argumentTypes, body, autoreturn, async,
+    public InlineDeclareNode asFuncDef() {
+        return new InlineDeclareNode(name, argumentNames, argumentTypes, body, autoreturn, async,
                 returnType, defaults, defaultCount, generics, argname, kwargname).setCatcher(catcher);
     }
 
