@@ -31,7 +31,7 @@ public abstract class Parser {
     );
 
     public static Parser getParser(final List<Token> tokens) {
-        return new RewriteParser(tokens);
+        return new CelParser(tokens);
     }
 
     public abstract ParseResult<Node> parse();
