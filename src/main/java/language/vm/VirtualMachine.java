@@ -192,33 +192,6 @@ public class VirtualMachine {
 
         Stack<Traceback> copy = copyTracebacks();
 
-        //if (!tracebacks.empty()) {
-        //    String arrow = "->";
-        //
-        //    // Generate traceback
-        //    Traceback last = tracebacks.peek();
-        //    while (last == null) {
-        //        tracebacks.pop();
-        //        last = tracebacks.peek();
-        //    }
-        //    while (!tracebacks.empty()) {
-        //        Traceback top = tracebacks.pop();
-        //        if (top == null) continue;        TODO RECODE THIS
-        //        int line = indexToLine(top.chunk.source(), top.chunk.getPosition(top.offset).index);
-        //        output = String.format("  %s  File %s, line %s, in %s\n%s", arrow, top.filename, line + 1, top.context, output);
-        //    }
-        //    output = "Traceback (most recent call last):\n" + output;
-        //
-        //    // Generate error message
-        //    int line = indexToLine(frame.closure.byteCode.chunk.source(), idx);
-        //    output += String.format("\n%s Error (Runtime): %s\nFile %s, line %s\n%s\n",
-        //            message, reason,
-        //            last.filename, line + 1,
-        //            SyntaxHighlighter.highlightFlat(frame.closure.byteCode.chunk.source(), idx, len));
-        //} else {
-        //    output = String.format("%s Error (Runtime): %s\n", message, reason);
-        //}
-
         tracebacks = copy;
 
         if (safe) {

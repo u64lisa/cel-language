@@ -150,6 +150,31 @@ public class DefaultDtoolRuntime extends DtoolRuntime {
 
         switch (compileType) {
 
+            case LLVM -> {
+                final Path buildPath = Path.of(this.projectFolder.projectRoot(),
+                        DEFAULT_BUILD_FOLDER);
+
+                for (SourceFile source : sources) {
+
+                    AbstractCompiler compiler = compileType.constructCompiler();
+                    byte[] compiled = compiler.compile(source.getSource(), source.getAst().getValue());
+
+                    final File outFile = new File(buildPath.toFile(), source.getFileName() + ".ll");
+                    if (outFile.exists())
+                        outFile.delete();
+
+                    try {
+                        final FileOutputStream fileOutputStream = new FileOutputStream(outFile);
+                        fileOutputStream.write(compiled);
+                        fileOutputStream.flush();
+                        fileOutputStream.close();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                }
+            }
+
             case ASM_64x86 -> {
                 final Path buildPath = Path.of(this.projectFolder.projectRoot(),
                         DEFAULT_BUILD_FOLDER);

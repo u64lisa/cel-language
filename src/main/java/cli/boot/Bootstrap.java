@@ -48,7 +48,7 @@ public class Bootstrap {
                 System.out.println("processing pre-compiler...");
                 runtime.processPreCompiler();
                 System.out.println("processing compiler...");
-                runtime.processCompiler(CompileType.CUSTOM_IR); // todo make type chooseable
+                runtime.processCompiler(CompileType.CUSTOM_IR);
                 // finish
                 System.out.println("finalizing compiler");
                 runtime.processFinalize();
