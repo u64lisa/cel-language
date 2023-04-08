@@ -67,8 +67,7 @@ public class CelParser extends Parser {
         ParseResult<Node> result = statements(Collections.singletonList(new TokenMatcher(TokenType.EOF, null)));
 
         if (result.getLanguageError() == null && !currentToken.getType().equals(TokenType.EOF)) {
-            return result.failure(LanguageException.expected(currentToken.getStartPosition().copy(),
-                    currentToken.getEndPosition().copy(), "Expected '+', '-', '*', '^', or '/'"));
+            return unexpected("'+', '-', '*', '^', or '/'");
         }
         return result;
     }

@@ -41,6 +41,10 @@ public record LanguageException(Type type, Position positionStart, Position posi
         return new LanguageException(Type.PARSER, start, end, "Expected Character", details);
     }
 
+    public static LanguageException invalid(Position start, Position end, String details) {
+        return new LanguageException(Type.PARSER, start, end, "", details);
+    }
+
     public static LanguageException invalidSyntax(Position start, Position end, String details) {
         return new LanguageException(Type.PARSER, start, end, "Invalid Syntax", details);
     }
