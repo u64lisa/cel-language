@@ -32,8 +32,8 @@ public class TypeLookup {
         this.types = new HashMap<>();
         // Builtin types
         types.put("i32", Types.INT);
-        types.put("f32", Types.FLOAT);
-        types.put("i128", Types.LONG);
+        types.put("f64", Types.FLOAT);
+        types.put("l64", Types.LONG);
         types.put("i64", Types.DOUBLE);
         types.put("i16", Types.SHORT);
         types.put("i8", Types.BYTE);

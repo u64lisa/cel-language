@@ -1232,10 +1232,10 @@ public class Compiler {
 
     public final Map<String, String> missMatchMap = new HashMap<>() {{
 
-        put("f32", "i64");
-        put("i64", "f32");
+        put("f64", "i64");
+        put("i64", "f64");
         put("i32", "i64");
-        put("i128", "i64");
+        put("l64", "i64");
         put("i16", "i64");
         put("i8", "i64");
 

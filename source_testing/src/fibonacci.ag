@@ -2,14 +2,14 @@ package "test";
 
 #main Test;
 
-inline fib(x: i128) -> i128 {
+inline fib(x: l64) -> l64 {
     #optimize;
     if (x <= 1) return x;
 
     return fib(x - 1) + fib(x - 2);
 }
 
-inline itrFib(x: i128) -> i128 {
+inline itrFib(x: l64) -> l64 {
     let fib1 = 1;
     let fib2 = 1;
 
@@ -39,7 +39,7 @@ class Test {
 
         println(sub);
 
-        var time = |f32| (epoch() - start);
+        var time = |f64| (epoch() - start);
         println(str(time) + " ms");
     }
 

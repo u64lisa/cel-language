@@ -14,9 +14,9 @@ public class Types {
     public static final VoidType VOID = VoidType.INSTANCE;
     public static final AnyType ANY = AnyType.INSTANCE;
     public static final I32Type INT = PrimitiveTypes.INT;
-    public static final I128Type LONG = PrimitiveTypes.LONG;
+    public static final L64Type LONG = PrimitiveTypes.LONG;
     public static final I16Type SHORT = PrimitiveTypes.SHORT;
-    public static final F32Type FLOAT = PrimitiveTypes.FLOAT;
+    public static final F64Type FLOAT = PrimitiveTypes.FLOAT;
     public static final I8Type BYTE = PrimitiveTypes.BYTE;
     public static final I64Type DOUBLE = PrimitiveTypes.DOUBLE;
     public static final BooleanType BOOL = PrimitiveTypes.BOOL;

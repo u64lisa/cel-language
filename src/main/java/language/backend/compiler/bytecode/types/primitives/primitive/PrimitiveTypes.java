@@ -10,8 +10,8 @@ import language.backend.compiler.bytecode.types.primitives.collection.ListType;
 
 public class PrimitiveTypes {
     public static final I32Type INT = I32Type.INSTANCE;
-    public static final F32Type FLOAT = F32Type.INSTANCE;
-    public static final I128Type LONG = I128Type.INSTANCE;
+    public static final F64Type FLOAT = F64Type.INSTANCE;
+    public static final L64Type LONG = L64Type.INSTANCE;
     public static final I16Type SHORT = I16Type.INSTANCE;
     public static final I8Type BYTE = I8Type.INSTANCE;
     public static final I64Type DOUBLE = I64Type.INSTANCE;

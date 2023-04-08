@@ -1,9 +1,0 @@
-package "file";
-
-compiler<x86> {
-
-}
-
-class File {
-
-}

@@ -6,9 +6,9 @@ typedef i8: byte;
 typedef i16: short;
 typedef i32: int;
 typedef i64: double;
-typedef i128: long;
+typedef l64: long;
 
-typedef f32: float;
+typedef f64: float;
 
 compiler<asm> {
     "_print:
