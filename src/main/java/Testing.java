@@ -22,6 +22,7 @@ public class Testing {
         test.processPreCompiler();
         test.processCompiler(CompileType.CUSTOM_IR);
         test.processCompiler(CompileType.ASM_64x86);
+        test.processCompiler(CompileType.LLVM); // playground thingy
         // finish
         test.processFinalize();
 

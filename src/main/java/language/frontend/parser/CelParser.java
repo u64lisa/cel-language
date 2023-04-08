@@ -1669,23 +1669,23 @@ public class CelParser extends Parser {
         return result.success(node);
     }
 
-    public ParseResult<Node> binOp(ParseExecutable leftParse, List<TokenType> ops) {
+    public ParseResult<Node> binOp(NodeCallback leftParse, List<TokenType> ops) {
         return binOp(leftParse, ops, null);
     }
 
-    public ParseResult<Node> binOp(ParseExecutable leftParse, List<TokenType> ops, ParseExecutable rightParse) {
+    public ParseResult<Node> binOp(NodeCallback leftParse, List<TokenType> ops, NodeCallback rightParse) {
         ParseResult<Node> result = new ParseResult<>();
         if (rightParse == null) rightParse = leftParse;
         Node right;
         Node left;
-        left = result.register(leftParse.execute());
+        left = result.register(leftParse.call());
         if (result.getLanguageError() != null) return result;
 
         while (ops.contains(currentToken.getType())) {
             TokenType operationToken = currentToken.getType();
             result.registerAdvancement();
             this.push();
-            right = result.register(rightParse.execute());
+            right = result.register(rightParse.call());
             if (result.getLanguageError() != null) return result;
             if (operationToken == TokenType.LEFT_BRACKET) {
                 if (currentToken.getType() != TokenType.RIGHT_BRACKET)
@@ -1997,7 +1997,7 @@ public class CelParser extends Parser {
         List<Case> cases = new ArrayList<>();
         ElseCase elseCase = null;
 
-        ParseExecutable getStatement = () -> {
+        NodeCallback getStatement = () -> {
             result.registerAdvancement();
             this.push();
             Node condition = result.register(parseComparisonExpression());
@@ -2012,11 +2012,11 @@ public class CelParser extends Parser {
             return result.failure(LanguageException.expected(currentToken.getStartPosition().copy(), currentToken.getEndPosition().copy(), "Expected '?'"));
 
         ParseResult<Node> r;
-        r = getStatement.execute();
+        r = getStatement.call();
         if (r != null) return r;
 
         while (currentToken.getType().equals(TokenType.DOLLAR)) {
-            r = getStatement.execute();
+            r = getStatement.call();
             if (r != null) return r;
         }
 
@@ -2282,7 +2282,7 @@ public class CelParser extends Parser {
         result.registerAdvancement();
         this.push();
 
-        ParseExecutable kv = () -> {
+        NodeCallback kv = () -> {
             Node key = result.register(parseComparisonExpression());
             if (result.getLanguageError() != null) return result;
 
@@ -2294,14 +2294,14 @@ public class CelParser extends Parser {
 
         ParseResult<Node> x;
         if (!currentToken.getType().equals(TokenType.RIGHT_BRACE)) {
-            x = kv.execute();
+            x = kv.call();
             if (x != null) return x;
         }
 
         while (currentToken.getType().equals(TokenType.COMMA)) {
             this.push();
             result.registerAdvancement();
-            x = kv.execute();
+            x = kv.call();
             if (x != null) return x;
         }
         if (!currentToken.getType().equals(TokenType.RIGHT_BRACE))

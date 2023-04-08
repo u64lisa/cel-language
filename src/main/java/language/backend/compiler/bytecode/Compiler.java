@@ -1421,8 +1421,9 @@ public class Compiler {
         for (int i = 0; i < node.generics.size(); i++)
             compileNull();
 
-        if (node.parentToken != null)
+        if (node.parentToken != null) {
             accessVariable(node.parentToken.getValue().toString());
+        }
 
         emit(ByteCodeOpCode.Class, nameConstant);
         emit(node.parentToken != null ? 1 : 0);

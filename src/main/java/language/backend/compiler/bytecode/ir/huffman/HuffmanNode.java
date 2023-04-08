@@ -1,24 +1,24 @@
 package language.backend.compiler.bytecode.ir.huffman;
 
-public class Node implements Comparable<Node> {
+public class HuffmanNode implements Comparable<HuffmanNode> {
 
 	public int freq;
 	public Short datum;
-	public Node left;
-	public Node right;
+	public HuffmanNode left;
+	public HuffmanNode right;
 
-	public Node(int freq, Short datum, Node left, Node right) {
+	public HuffmanNode(int freq, Short datum, HuffmanNode left, HuffmanNode right) {
 		this.freq = freq;
 		this.datum = datum;
 		this.left = left;
 		this.right = right;
 	}
 
-	public Node(int freq, Node left, Node right) {
+	public HuffmanNode(int freq, HuffmanNode left, HuffmanNode right) {
 		this(freq, null, left, right);
 	}
 
-	public Node(int freq, Short datum) {
+	public HuffmanNode(int freq, Short datum) {
 		this(freq, datum, null, null);
 	}
 
@@ -39,7 +39,7 @@ public class Node implements Comparable<Node> {
 	}
 
 	@Override
-	public int compareTo(Node obj) {
+	public int compareTo(HuffmanNode obj) {
 		if (this.freq > obj.freq) {
 			return 1;
 		} else if (this.freq < obj.freq) {

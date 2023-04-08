@@ -52,6 +52,7 @@ public class VarAssignNode extends Node {
         defining = true;
         startPosition = name.getStartPosition(); endPosition = name.getEndPosition();
         nodeType = NodeType.VAR_ASSIGNMENT;
+
     }
 
     @SuppressWarnings("unused")

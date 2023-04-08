@@ -29,17 +29,10 @@ import language.utils.WrappedCast;
 
 import java.util.*;
 
+/**
+ * The type Rewrite parser.
+ */
 public class RewriteParser extends Parser {
-
-    final List<TokenType> binRefOps = Arrays.asList(
-            TokenType.PLUS_EQUALS, TokenType.MINUS_EQUALS,
-            TokenType.START_EQUALS, TokenType.SLASH_EQUALS,
-            TokenType.CARET_EQUALS
-    );
-
-    final List<TokenType> unRefOps = Arrays.asList(
-            TokenType.PLUS_PLUS, TokenType.MINUS_MINUS
-    );
 
     private final List<String> declarationKeywords = Arrays.asList(
             "static", "private", "public"
@@ -50,6 +43,11 @@ public class RewriteParser extends Parser {
     private int tokenIndex = -1;
     private int tokenCount;
 
+    /**
+     * Instantiates a new Rewrite parser.
+     *
+     * @param tokens the tokens
+     */
     public RewriteParser(List<Token> tokens) {
         this.tokens = tokens;
         this.tokenCount = tokens.size();
@@ -67,6 +65,12 @@ public class RewriteParser extends Parser {
         return result;
     }
 
+    /**
+     * Statements parse result.
+     *
+     * @param tks the tks
+     * @return the parse result
+     */
     public ParseResult<Node> statements(List<TokenMatcher> tks) {
         ParseResult<Node> result = new ParseResult<>();
         List<Node> statements = new ArrayList<>();
@@ -134,46 +138,29 @@ public class RewriteParser extends Parser {
         return result.success(new BodyNode(statements));
     }
 
+    /**
+     * Parse statement parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseStatement() {
         ParseResult<Node> result = new ParseResult<>();
         Position start = currentToken.getStartPosition().copy();
 
-        if (currentToken.matches(TokenType.KEYWORD, "macro")) {
-            result.registerAdvancement();
-            this.push();
-            return this.parseMacroDefinition();
-        }
-
-        if (currentToken.matches(TokenType.KEYWORD, "return")) {
-            result.registerAdvancement();
-            this.push();
-            Node expr = null;
-
-            if (currentToken.getType() != TokenType.NEW_LINE && currentToken.getType() != TokenType.INVISIBLE_NEW_LINE) {
-                expr = result.register(this.parseExpression());
-                if (result.getLanguageError() != null) return result;
-            }
-
-            return result.success(new ReturnNode(expr, start, currentToken.getEndPosition().copy()));
-        } else if (currentToken.matches(TokenType.KEYWORD, "continue")) {
-            result.registerAdvancement();
-            this.push();
-            return result.success(new ContinueNode(start, currentToken.getEndPosition().copy()));
-        } else if (currentToken.matches(TokenType.KEYWORD, "break")) {
-            result.registerAdvancement();
-            this.push();
-            return result.success(new BreakNode(start, currentToken.getEndPosition().copy()));
-        } else if (currentToken.matches(TokenType.KEYWORD, "pass")) {
-            result.registerAdvancement();
-            this.push();
-            return result.success(new PassNode(start, currentToken.getEndPosition().copy()));
-        } else if (currentToken.getType() == TokenType.LEFT_BRACE) {
+        if (currentToken.getType() == TokenType.LEFT_BRACE) {
             Node statements = result.register(parseBlock());
             if (result.getLanguageError() != null) return result;
             return result.success(new ScopeNode(null, statements));
-        } else if (currentToken.getType() == TokenType.KEYWORD) {
+        }
+
+        if (currentToken.getType() == TokenType.KEYWORD) {
 
             switch (currentToken.getValue().toString()) {
+                case "macro" -> {
+                    result.registerAdvancement();
+                    this.push();
+                    return this.parseMacroDefinition();
+                }
                 case "for" -> {
                     Node forExpr = result.register(this.parseForLoop());
                     if (result.getLanguageError() != null) return result;
@@ -236,14 +223,14 @@ public class RewriteParser extends Parser {
                     if (result.getLanguageError() != null) return result;
                     return result.success(throwNode);
                 }
-                case "class", "object", "recipe" -> {
+                case "class" -> {
                     Node classDef = result.register(this.parseClassDefinition());
                     if (result.getLanguageError() != null) return result;
                     return result.success(classDef);
                 }
                 case "compiler" -> {
                     Node compilerDef = result.register(this.parseCompilerDefinition());
-                    if (result.getLanguageError()!= null) return result;
+                    if (result.getLanguageError() != null) return result;
                     return result.success(compilerDef);
                 }
                 case "if" -> {
@@ -325,7 +312,9 @@ public class RewriteParser extends Parser {
                 }
             }
 
-        } else if (currentToken.getType().equals(TokenType.HASHTAG)) {
+        }
+
+        if (currentToken.getType().equals(TokenType.HASHTAG)) {
             Node useExpr = result.register(this.parseExpressionCall());
             if (result.getLanguageError() != null) return result;
             return result.success(useExpr);
@@ -340,7 +329,7 @@ public class RewriteParser extends Parser {
         ParseResult<Node> result = new ParseResult<>();
         this.push();
 
-        if (!this.expect("<"))
+        if (this.tokenNotMatching("<"))
             return this.unexpected("<");
 
         if (!this.expect(TokenType.IDENTIFIER, () -> {}))
@@ -350,10 +339,10 @@ public class RewriteParser extends Parser {
         result.registerAdvancement();
         this.push();
 
-        if (!this.expect(">"))
+        if (this.tokenNotMatching(">"))
             return this.unexpected(">");
 
-        if (!this.expect("{"))
+        if (this.tokenNotMatching("{"))
             return this.unexpected("{");
 
         long start = System.currentTimeMillis();
@@ -368,12 +357,17 @@ public class RewriteParser extends Parser {
             }
         }
 
-        if (!this.expect("}"))
+        if (this.tokenNotMatching("}"))
             return this.unexpected("}");
 
         return result.success(new CompilerNode(compilerType, stringTokens.toArray(new Token[0])));
     }
 
+    /**
+     * Parse var parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Token> parseVar() {
         ParseResult<Token> result = new ParseResult<>();
 
@@ -386,10 +380,20 @@ public class RewriteParser extends Parser {
         return result.success(name);
     }
 
+    /**
+     * Chain expr parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> chainExpr() {
         return binOp(this::parseComparisonExpression, Collections.singletonList(TokenType.COLON));
     }
 
+    /**
+     * Parse type token parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Token> parseTypeToken() {
         List<String> type = new ArrayList<>();
         Stack<Token> parens = new Stack<>();
@@ -407,39 +411,50 @@ public class RewriteParser extends Parser {
             switch (currentToken.getType()) {
                 case LEFT_ANGLE, LEFT_BRACE, LEFT_BRACKET, LEFT_PAREN -> parens.push(currentToken);
                 case RIGHT_ANGLE -> {
-                    if (parens.isEmpty()) break ParseType;
+                    if (parens.isEmpty())
+                        break ParseType;
+
                     if (!parens.peek().getType().equals(TokenType.LEFT_ANGLE))
                         return unmatched("'>'");
 
                     parens.pop();
                 }
                 case ANGLE_ANGLE -> {
-                    if (parens.isEmpty()) break ParseType;
+                    if (parens.isEmpty())
+                        break ParseType;
+
                     if (!parens.peek().getType().equals(TokenType.LEFT_ANGLE))
-                        return unmatched( "Unmatched '>'");
+                        return unmatched("Unmatched '>'");
 
                     parens.pop();
+
                     if (!parens.peek().getType().equals(TokenType.LEFT_ANGLE))
                         return unmatched("Unmatched '>'");
 
                     parens.pop();
                 }
                 case RIGHT_PAREN -> {
-                    if (parens.isEmpty()) break ParseType;
+                    if (parens.isEmpty())
+                        break ParseType;
+
                     if (!parens.peek().getType().equals(TokenType.LEFT_PAREN))
                         return unmatched("')'");
 
                     parens.pop();
                 }
                 case RIGHT_BRACKET -> {
-                    if (parens.isEmpty()) break ParseType;
+                    if (parens.isEmpty())
+                        break ParseType;
+
                     if (!parens.peek().getType().equals(TokenType.LEFT_BRACKET))
                         return unmatched("']'");
 
                     parens.pop();
                 }
                 case RIGHT_BRACE -> {
-                    if (parens.isEmpty()) break ParseType;
+                    if (parens.isEmpty())
+                        break ParseType;
+
                     if (!parens.peek().getType().equals(TokenType.LEFT_BRACE))
                         return unmatched("'}'");
 
@@ -460,6 +475,11 @@ public class RewriteParser extends Parser {
         return result.success(new Token(TokenType.TYPE, type, start, end));
     }
 
+    /**
+     * Parse expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseExpression() {
         ParseResult<Node> result = new ParseResult<>();
         List<String> type = Collections.singletonList("any");
@@ -536,10 +556,12 @@ public class RewriteParser extends Parser {
             if (currentToken.getType() == TokenType.COMMA) {
                 Node nll = new NullNode(new Token(TokenType.IDENTIFIER, "null", currentToken.getStartPosition().copy(),
                         currentToken.getEndPosition().copy()));
+
                 List<Node> varNames = new ArrayList<>(Collections.singletonList(new VarAssignNode(name, nll).setType(type)));
                 do {
                     name = result.register(parseIdentifier("Variable name"));
                     if (result.getLanguageError() != null) return result;
+
                     varNames.add(new VarAssignNode(name, nll).setType(type));
                     result.registerAdvancement();
                     this.push();
@@ -597,14 +619,19 @@ public class RewriteParser extends Parser {
             if (currentToken.getType().equals(TokenType.FAT_ARROW))
                 return unexpected("'='");
 
-            if (!currentToken.getType().equals(TokenType.EQUAL))
+            if (!currentToken.getType().equals(TokenType.EQUAL)) {
+
                 return result.success(new VarAssignNode(name, new NullNode(new Token(TokenType.IDENTIFIER, "null",
                         currentToken.getStartPosition().copy(), currentToken.getEndPosition().copy()))).setType(type));
+            }
 
             result.registerAdvancement();
             this.push();
             Node expr = result.register(this.parseStatement());
             if (result.getLanguageError() != null) return result;
+
+
+
             return result.success(new VarAssignNode(name, expr, locked).setType(type).setRange(min, max));
         } else if (currentToken.matches(TokenType.KEYWORD, "let")) {
             Token identifier = result.register(parseIdentifier("Variable name"));
@@ -665,6 +692,7 @@ public class RewriteParser extends Parser {
                 Token operationToken = currentToken;
                 result.registerAdvancement();
                 this.push();
+
                 return result.success(new VarAssignNode(variable, new UnaryOpNode(operationToken.getType(),
                         new VarAccessNode(variable)), false).setDefining(false));
             }
@@ -673,6 +701,7 @@ public class RewriteParser extends Parser {
                 this.push();
                 Node value = result.register(parseStatement());
                 if (result.getLanguageError() != null) return result;
+
                 return result.success(new VarAssignNode(variable, value, false, 1));
             }
             this.pull(1);
@@ -699,6 +728,11 @@ public class RewriteParser extends Parser {
         return result.success(node);
     }
 
+    /**
+     * Parse factor parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseFactor() {
         ParseResult<Node> result = new ParseResult<>();
         Token tok = currentToken;
@@ -713,10 +747,21 @@ public class RewriteParser extends Parser {
         return pow();
     }
 
+    /**
+     * Parse identifier parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Token> parseIdentifier() {
         return parseIdentifier("Identifier");
     }
 
+    /**
+     * Parse identifier parse result.
+     *
+     * @param name the name
+     * @return the parse result
+     */
     public ParseResult<Token> parseIdentifier(String name) {
         ParseResult<Token> result = new ParseResult<>();
         this.push();
@@ -728,6 +773,11 @@ public class RewriteParser extends Parser {
         return result.success(currentToken);
     }
 
+    /**
+     * Parse expression call parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseExpressionCall() {
         ParseResult<Node> result = new ParseResult<>();
         Token useToken = result.register(parseIdentifier());
@@ -744,16 +794,31 @@ public class RewriteParser extends Parser {
         return result.success(new UseNode(useToken, args));
     }
 
+    /**
+     * Parse bit shift expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseBitShiftExpression() {
         return binOp(this::parseBitWiseExpression,
                 Arrays.asList(TokenType.LEFT_TILDE_ARROW, TokenType.TILDE_TILDE, TokenType.RIGHT_TILDE_ARROW), this::parseExpression);
     }
 
+    /**
+     * Parse bit wise expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseBitWiseExpression() {
         return binOp(this::parseComplexExpression,
                 Arrays.asList(TokenType.TILDE_AMPERSAND, TokenType.TILDE_PIPE, TokenType.TILDE_CARET), this::parseExpression);
     }
 
+    /**
+     * Parse complex expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseComplexExpression() {
         ParseResult<Node> result = new ParseResult<>();
         if (currentToken.getType() == TokenType.TILDE || currentToken.getType() == TokenType.DOLLAR) {
@@ -769,6 +834,11 @@ public class RewriteParser extends Parser {
         return byteExpr();
     }
 
+    /**
+     * Byte expr parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> byteExpr() {
         ParseResult<Node> result = new ParseResult<>();
         boolean toBytes = currentToken.getType() == TokenType.AT;
@@ -784,179 +854,199 @@ public class RewriteParser extends Parser {
         return result.success(expr);
     }
 
+    /**
+     * Atom parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> atom() {
         ParseResult<Node> result = new ParseResult<>();
-        Token tok = currentToken;
 
-        if (tok.getType() == TokenType.KEYWORD) switch (tok.getValue().toString()) {
-            case "attribute" -> {
-                this.push();
-                result.registerAdvancement();
-                Token name = currentToken;
+        Token token = currentToken;
 
-                if (!currentToken.getType().equals(TokenType.IDENTIFIER))
-                    return unexpected("identifier");
-
-                this.push();
-                result.registerAdvancement();
-                return result.success(new AttributeAccessNode(name));
-            }
-            case "scope" -> {
+        switch (currentToken.getType()) {
+            case INTEGER, FLOAT, DOUBLE, LONG, SHORT, BYTE -> {
                 result.registerAdvancement();
                 this.push();
-                String name = null;
-                if (currentToken.getType() == TokenType.LEFT_BRACKET) {
-                    Token n = result.register(parseIdentifier("Scope"));
-                    if (result.getLanguageError() != null) return result;
-
-                    name = n.getValue().toString();
-
+                if (currentToken.getType() == TokenType.IDENTIFIER) {
+                    if (currentToken.getValue().toString().startsWith("x") && token.getValue().equals(0.0) &&
+                            token.getType().equals(TokenType.INTEGER)) {
+                        try {
+                            Token hexTk = currentToken;
+                            result.registerAdvancement();
+                            this.push();
+                            int hexForm = Integer.parseInt(hexTk.getValue().toString().substring(1), 16);
+                            return result.success(new NumberNode(hexForm, hexTk.getStartPosition(), hexTk.getEndPosition()));
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                    Node identifier = new VarAccessNode(currentToken);
                     result.registerAdvancement();
                     this.push();
-
-                    if (currentToken.getType() != TokenType.RIGHT_BRACKET)
-                        return unexpected("']'");
-
-                    result.registerAdvancement();
-                    this.push();
-                }
-                Node statements = result.register(parseBlock());
-                if (result.getLanguageError() != null) return result;
-                return result.success(new ScopeNode(name, statements));
-            }
-            case "match" -> {
-                Node matchExpr = result.register(this.parseMatchingExpression());
-                if (result.getLanguageError() != null) return result;
-                return result.success(matchExpr);
-            }
-            case "inline" -> {
-                Node inlineDefinition = result.register(this.parseInlineFunctionDefinition());
-                if (result.getLanguageError() != null) return result;
-                return result.success(inlineDefinition);
-            }
-            case "null" -> {
-                result.registerAdvancement();
-                this.push();
-                return result.success(new NullNode(tok));
-            }
-        } else if (currentToken.getType() == TokenType.SLASH) {
-            // Decorator
-            this.push();
-            result.registerAdvancement();
-            Node decorator = result.register(parseFactor());
-            if (result.getLanguageError() != null) return result;
-
-            if (currentToken.getType() != TokenType.SLASH)
-                return unexpected("closing slash");
-
-            result.registerAdvancement();
-            this.push();
-            Node fn = result.register(parseStatement());
-            if (result.getLanguageError() != null) return result;
-            Token name;
-            if (fn.getNodeType() == NodeType.INLINE_DEFINITION)
-                name = ((InlineDeclareNode) fn).name;
-            else if (fn.getNodeType() == NodeType.CLASS_DEFINITION)
-                name = ((ClassDefNode) fn).className;
-            else if (fn.getNodeType() == NodeType.DECORATOR)
-                name = ((DecoratorNode) fn).name;
-            else
-                return result.failure(LanguageException.invalidSyntax(fn.getStartPosition().copy(),
-                        fn.getEndPosition().copy(), "Object is not deco-ratable"));
-
-            return result.success(new DecoratorNode(decorator, fn, name));
-        } else if (Arrays.asList(TokenType.INTEGER, TokenType.FLOAT, TokenType.DOUBLE,
-                TokenType.LONG, TokenType.SHORT, TokenType.BYTE).contains(tok.getType())) {
-            result.registerAdvancement();
-            this.push();
-            if (currentToken.getType() == TokenType.IDENTIFIER) {
-                if (currentToken.getValue().toString().startsWith("x") && tok.getValue().equals(0.0) && tok.getType().equals(TokenType.INTEGER)) {
-                    try {
-                        Token hexTk = currentToken;
+                    return result.success(new BinOpNode(new NumberNode(token), TokenType.STAR, identifier));
+                } else if (currentToken.getType() == TokenType.LEFT_PAREN) {
+                    // 3(1 + 2) = 3 * (1 + 2)
+                    Node node = new NumberNode(token);
+                    while (currentToken.getType() == TokenType.LEFT_PAREN) {
                         result.registerAdvancement();
                         this.push();
-                        int hexForm = Integer.parseInt(hexTk.getValue().toString().substring(1), 16);
-                        return result.success(new NumberNode(hexForm, hexTk.getStartPosition(), hexTk.getEndPosition()));
-                    } catch (NumberFormatException ignored) {
+                        Node expr = result.register(parseExpression());
+                        if (result.getLanguageError() != null) return result;
+                        if (currentToken.getType() != TokenType.RIGHT_PAREN)
+                            return result.failure(LanguageException.expected(currentToken.getStartPosition().copy(),
+                                    currentToken.getEndPosition().copy(), "Expected ')' to close expression"));
+                        result.registerAdvancement();
+                        this.push();
+                        node = new BinOpNode(node, TokenType.STAR, expr);
+                    }
+                    return result.success(node);
+                }
+                return result.success(new NumberNode(token));
+            }
+
+            case KEYWORD -> {
+                switch (currentToken.getValue().toString()) {
+                    case "attribute" -> {
+                        this.push();
+                        result.registerAdvancement();
+                        Token name = currentToken;
+
+                        if (!currentToken.getType().equals(TokenType.IDENTIFIER))
+                            return unexpected("identifier");
+
+                        this.push();
+                        result.registerAdvancement();
+                        return result.success(new AttributeAccessNode(name));
+                    }
+                    case "scope" -> {
+                        result.registerAdvancement();
+                        this.push();
+                        String name = null;
+                        if (currentToken.getType() == TokenType.LEFT_BRACKET) {
+                            Token n = result.register(parseIdentifier("Scope"));
+                            if (result.getLanguageError() != null) return result;
+
+                            name = n.getValue().toString();
+
+                            result.registerAdvancement();
+                            this.push();
+
+                            if (currentToken.getType() != TokenType.RIGHT_BRACKET)
+                                return unexpected("']'");
+
+                            result.registerAdvancement();
+                            this.push();
+                        }
+                        Node statements = result.register(parseBlock());
+                        if (result.getLanguageError() != null) return result;
+                        return result.success(new ScopeNode(name, statements));
+                    }
+                    case "match" -> {
+                        Node matchExpr = result.register(this.parseMatchingExpression());
+                        if (result.getLanguageError() != null) return result;
+                        return result.success(matchExpr);
+                    }
+                    case "inline" -> {
+                        Node inlineDefinition = result.register(this.parseInlineFunctionDefinition());
+                        if (result.getLanguageError() != null) return result;
+                        return result.success(inlineDefinition);
+                    }
+                    case "null" -> {
+                        result.registerAdvancement();
+                        this.push();
+                        return result.success(new NullNode(currentToken));
                     }
                 }
-                Node identifier = new VarAccessNode(currentToken);
-                result.registerAdvancement();
-                this.push();
-                return result.success(new BinOpNode(new NumberNode(tok), TokenType.STAR, identifier));
-            } else if (currentToken.getType() == TokenType.LEFT_PAREN) {
-                // 3(1 + 2) = 3 * (1 + 2)
-                Node node = new NumberNode(tok);
-                while (currentToken.getType() == TokenType.LEFT_PAREN) {
-                    result.registerAdvancement();
-                    this.push();
-                    Node expr = result.register(parseExpression());
-                    if (result.getLanguageError() != null) return result;
-
-                    if (currentToken.getType() != TokenType.RIGHT_PAREN)
-                        return unexpected("')' to close expression");
-
-                    result.registerAdvancement();
-                    this.push();
-                    node = new BinOpNode(node, TokenType.STAR, expr);
-                }
-                return result.success(node);
             }
-            return result.success(new NumberNode(tok));
-        } else if (tok.getType().equals(TokenType.STRING)) {
-            final Pair<String, Boolean> element = WrappedCast.cast(tok.getValue());
-            if (element.getLast()) {
-                Node val = result.register(formatStringExpr());
+            case SLASH -> {
+                this.push();
+                result.registerAdvancement();
+                Node decorator = result.register(parseFactor());
                 if (result.getLanguageError() != null) return result;
-                return result.success(val);
-            }
-            result.registerAdvancement();
-            this.push();
-            return result.success(new StringNode(tok));
-        } else if (tok.getType().equals(TokenType.IDENTIFIER)) {
-            result.registerAdvancement();
-            this.push();
-            if (currentToken.getType().equals(TokenType.EQUAL))
-                return unexpected("'=>'");
 
-            return result.success(new VarAccessNode(tok));
-        } else if (tok.getType().equals(TokenType.BOOLEAN)) {
-            result.registerAdvancement();
-            this.push();
-            return result.success(new BooleanNode(tok));
-        } else if (tok.getType().equals(TokenType.QUESTION_MARK)) {
-            Node queryExpr = result.register(this.parseQueryExpression());
-            if (result.getLanguageError() != null) return result;
-            return result.success(queryExpr);
-        } else if (tok.getType().equals(TokenType.LEFT_BRACKET)) {
-            Node listExpr = result.register(this.parseListExpression());
-            if (result.getLanguageError() != null) return result;
-            return result.success(listExpr);
-        } else if (tok.getType().equals(TokenType.LEFT_BRACE)) {
-            Node dictExpr = result.register(this.parseDictionaryExpression());
-            if (result.getLanguageError() != null) return result;
-            return result.success(dictExpr);
-        } else if (tok.getType().equals(TokenType.LEFT_PAREN)) {
-            result.registerAdvancement();
-            this.push();
-            Node expr = result.register(this.parseExpression());
-            if (result.getLanguageError() != null) return result;
-            if (currentToken.getType().equals(TokenType.RIGHT_PAREN)) {
+                if (currentToken.getType() != TokenType.SLASH)
+                    return unexpected("closing slash");
+
                 result.registerAdvancement();
                 this.push();
-                return result.success(expr);
-            } else
-                return unexpected("')'");
-        }
+                Node fn = result.register(parseStatement());
+                if (result.getLanguageError() != null) return result;
+                Token name;
+                if (fn.getNodeType() == NodeType.INLINE_DEFINITION)
+                    name = ((InlineDeclareNode) fn).name;
+                else if (fn.getNodeType() == NodeType.CLASS_DEFINITION)
+                    name = ((ClassDefNode) fn).className;
+                else if (fn.getNodeType() == NodeType.DECORATOR)
+                    name = ((DecoratorNode) fn).name;
+                else
+                    return result.failure(LanguageException.invalidSyntax(fn.getStartPosition().copy(),
+                            fn.getEndPosition().copy(), "Object is not deco-ratable"));
 
-        Position start = tok.getStartPosition();
-        Position end = tok.getEndPosition() != null ?
-                tok.getEndPosition() :
-                new Position(start.column() + tokenFound().length(), start.line());
+                return result.success(new DecoratorNode(decorator, fn, name));
+            }
+
+            case QUESTION_MARK -> {
+                Node queryExpr = result.register(this.parseQueryExpression());
+                if (result.getLanguageError() != null) return result;
+                return result.success(queryExpr);
+            }
+            case LEFT_BRACKET -> {
+                Node listExpr = result.register(this.parseListExpression());
+                if (result.getLanguageError() != null) return result;
+                return result.success(listExpr);
+            }
+            case LEFT_BRACE -> {
+                Node dictExpr = result.register(this.parseDictionaryExpression());
+                if (result.getLanguageError() != null) return result;
+                return result.success(dictExpr);
+            }
+            case LEFT_PAREN -> {
+                result.registerAdvancement();
+                this.push();
+                Node expr = result.register(this.parseExpression());
+                if (result.getLanguageError() != null) return result;
+                if (currentToken.getType().equals(TokenType.RIGHT_PAREN)) {
+                    result.registerAdvancement();
+                    this.push();
+                    return result.success(expr);
+                } else
+                    return unexpected("')'");
+            }
+            case STRING -> {
+                final Pair<String, Boolean> element = WrappedCast.cast(currentToken.getValue());
+                if (element.getLast()) {
+                    Node val = result.register(formatStringExpr());
+                    if (result.getLanguageError() != null) return result;
+                    return result.success(val);
+                }
+                result.registerAdvancement();
+                this.push();
+                return result.success(new StringNode(currentToken));
+            }
+            case BOOLEAN -> {
+                result.registerAdvancement();
+                this.push();
+                return result.success(new BooleanNode(currentToken));
+            }
+            case IDENTIFIER -> {
+                result.registerAdvancement();
+                this.push();
+                if (currentToken.getType().equals(TokenType.EQUAL))
+                    return unexpected("'=>'");
+
+                return result.success(new VarAccessNode(token));
+            }
+
+        }
 
         return unexpected(String.format("number, identifier, '+', '-', or '('. Found %s", tokenFound()));
     }
 
+    /**
+     * Parse reference expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseReferenceExpression() {
         Token prefixToken;
         if (currentToken.getType() == TokenType.STAR || currentToken.getType() == TokenType.AMPERSAND) {
@@ -974,9 +1064,14 @@ public class RewriteParser extends Parser {
             else return result.success(new RefNode(expr));
         }
 
-        return index();
+        return binOp(this::call, Collections.singletonList(TokenType.LEFT_BRACKET), this::parseExpression);
     }
 
+    /**
+     * Format string expr parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> formatStringExpr() {
         ParseResult<Node> result = new ParseResult<>();
         Token tok = currentToken;
@@ -1029,6 +1124,11 @@ public class RewriteParser extends Parser {
                 new Pair<>(sb.toString(), false), tok.getStartPosition(), tok.getEndPosition()))));
     }
 
+    /**
+     * Parse throw expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseThrowExpression() {
         ParseResult<Node> result = new ParseResult<>();
 
@@ -1060,6 +1160,11 @@ public class RewriteParser extends Parser {
 
     // MACRO SECTION START --------------------------------------------------------------------------------------------------
 
+    /**
+     * Parse macro definition parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseMacroDefinition() {
         ParseResult<Node> result = new ParseResult<>();
 
@@ -1080,6 +1185,12 @@ public class RewriteParser extends Parser {
         return result.success(new MacroDefinitionNode(macroName, body));
     }
 
+    /**
+     * Read macro section list.
+     *
+     * @param closing the closing
+     * @return the list
+     */
     public List<Token> readMacroSection(final TokenType closing) {
         List<Token> tokens = new ArrayList<>();
 
@@ -1116,6 +1227,11 @@ public class RewriteParser extends Parser {
         return tokens;
     }
 
+    /**
+     * Read macro scope head.
+     *
+     * @param type the type
+     */
     public void readMacroScopeHead(TokenType type) {
         if (currentToken.getType().equals(type)) {
             this.push();
@@ -1126,9 +1242,11 @@ public class RewriteParser extends Parser {
                 currentToken.getEndPosition().copy(), "Expected " + type));
     }
 
-    // MACRO SECTION END ----------------------------------------------------------------------------------------------------
-
-
+    /**
+     * Parse structure definition parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseStructureDefinition() {
         ParseResult<Node> result = new ParseResult<>();
 
@@ -1175,6 +1293,11 @@ public class RewriteParser extends Parser {
 
     }
 
+    /**
+     * Parse enum expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseEnumExpression() {
         ParseResult<Node> result = new ParseResult<>();
 
@@ -1276,6 +1399,11 @@ public class RewriteParser extends Parser {
         return result.success(new EnumNode(name, children, pub));
     }
 
+    /**
+     * Parse switch expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseSwitchExpression() {
         ParseResult<Node> result = new ParseResult<>();
 
@@ -1347,6 +1475,11 @@ public class RewriteParser extends Parser {
         return result.success(switchNode);
     }
 
+    /**
+     * Expect semicolon parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Void> expectSemicolon() {
         if (currentToken.getType() != TokenType.INVISIBLE_NEW_LINE && currentToken.getType() != TokenType.NEW_LINE)
             return unexpected("';'");
@@ -1354,6 +1487,12 @@ public class RewriteParser extends Parser {
         return new ParseResult<>();
     }
 
+    /**
+     * Pattern expr parse result.
+     *
+     * @param expr the expr
+     * @return the parse result
+     */
     public ParseResult<Node> patternExpr(Node expr) {
         ParseResult<Node> result = new ParseResult<>();
         HashMap<Token, Node> patterns = new HashMap<>();
@@ -1393,6 +1532,11 @@ public class RewriteParser extends Parser {
         return result.success(new PatternNode(expr, patterns));
     }
 
+    /**
+     * Parse matching expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseMatchingExpression() {
         ParseResult<Node> result = new ParseResult<>();
 
@@ -1480,6 +1624,11 @@ public class RewriteParser extends Parser {
         return result.success(switchNode);
     }
 
+    /**
+     * Call parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> call() {
         ParseResult<Node> result = new ParseResult<>();
         Node node = result.register(this.atom());
@@ -1582,31 +1731,54 @@ public class RewriteParser extends Parser {
         return result.success(node);
     }
 
-    public ParseResult<Node> index() {
-        return binOp(this::call, Collections.singletonList(TokenType.LEFT_BRACKET), this::parseExpression);
-    }
-
+    /**
+     * Pow parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> pow() {
         return binOp(this::refOp, Arrays.asList(TokenType.CARET, TokenType.PERCENT), this::parseFactor);
     }
 
+    /**
+     * Ref op parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> refOp() {
         return binOp(this::refSugars, Collections.singletonList(TokenType.FAT_ARROW));
     }
 
+    /**
+     * Ref sugars parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> refSugars() {
         ParseResult<Node> result = new ParseResult<>();
 
         Node expr = result.register(this.parseReferenceExpression());
         if (result.getLanguageError() != null) return result;
 
-        while (binRefOps.contains(currentToken.getType()) || unRefOps.contains(currentToken.getType())) {
-            if (unRefOps.contains(currentToken.getType())) {
+        while (Arrays.asList(
+                TokenType.PLUS_EQUALS, TokenType.MINUS_EQUALS,
+                TokenType.START_EQUALS, TokenType.SLASH_EQUALS,
+                TokenType.CARET_EQUALS).contains(currentToken.getType()) ||
+                Arrays.asList(TokenType.PLUS_PLUS, TokenType.MINUS_MINUS)
+                        .contains(currentToken.getType())) {
+
+            if (Arrays.asList(TokenType.PLUS_PLUS, TokenType.MINUS_MINUS)
+                    .contains(currentToken.getType())) {
+
                 expr = new BinOpNode(expr, TokenType.FAT_ARROW, new UnaryOpNode(currentToken.getType(), expr));
 
                 result.registerAdvancement();
                 this.push();
-            } else if (binRefOps.contains(currentToken.getType())) {
+            } else if (Arrays.asList(
+                    TokenType.PLUS_EQUALS, TokenType.MINUS_EQUALS,
+                    TokenType.START_EQUALS, TokenType.SLASH_EQUALS,
+                    TokenType.CARET_EQUALS
+            ).contains(currentToken.getType())) {
                 TokenType opTok = switch (currentToken.getType()) {
                     case CARET_EQUALS -> TokenType.CARET;
                     case START_EQUALS -> TokenType.STAR;
@@ -1628,14 +1800,29 @@ public class RewriteParser extends Parser {
         return result.success(expr);
     }
 
+    /**
+     * Parse term parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseTerm() {
         return binOp(this::parseFactor, Arrays.asList(TokenType.STAR, TokenType.SLASH));
     }
 
+    /**
+     * Parse attribute parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseAttribute() {
         return binOp(this::parseTerm, Arrays.asList(TokenType.PLUS, TokenType.MINUS));
     }
 
+    /**
+     * Parse comparison expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseComparisonExpression() {
         ParseResult<Node> result = new ParseResult<>();
         if (currentToken.getType().equals(TokenType.BANG)) {
@@ -1654,6 +1841,11 @@ public class RewriteParser extends Parser {
         return result.success(node);
     }
 
+    /**
+     * Parse bit expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseBitExpression() {
         ParseResult<Node> result = new ParseResult<>();
         Node node = result.register(binOp(this::parseBitShiftExpression, Arrays.asList(TokenType.AMPERSAND, TokenType.PIPE)));
@@ -1661,23 +1853,38 @@ public class RewriteParser extends Parser {
         return result.success(node);
     }
 
-    public ParseResult<Node> binOp(ParseExecutable leftParse, List<TokenType> ops) {
+    /**
+     * Bin op parse result.
+     *
+     * @param leftParse the left parse
+     * @param ops       the ops
+     * @return the parse result
+     */
+    public ParseResult<Node> binOp(NodeCallback leftParse, List<TokenType> ops) {
         return binOp(leftParse, ops, null);
     }
 
-    public ParseResult<Node> binOp(ParseExecutable leftParse, List<TokenType> ops, ParseExecutable rightParse) {
+    /**
+     * Bin op parse result.
+     *
+     * @param leftParse  the left parse
+     * @param ops        the ops
+     * @param rightParse the right parse
+     * @return the parse result
+     */
+    public ParseResult<Node> binOp(NodeCallback leftParse, List<TokenType> ops, NodeCallback rightParse) {
         ParseResult<Node> result = new ParseResult<>();
         if (rightParse == null) rightParse = leftParse;
         Node right;
         Node left;
-        left = result.register(leftParse.execute());
+        left = result.register(leftParse.call());
         if (result.getLanguageError() != null) return result;
 
         while (ops.contains(currentToken.getType())) {
             TokenType operationToken = currentToken.getType();
             result.registerAdvancement();
             this.push();
-            right = result.register(rightParse.execute());
+            right = result.register(rightParse.call());
             if (result.getLanguageError() != null) return result;
             if (operationToken == TokenType.LEFT_BRACKET) {
 
@@ -1696,6 +1903,11 @@ public class RewriteParser extends Parser {
         return result.success(left);
     }
 
+    /**
+     * Parse arguments parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Argument> parseArguments() {
         ParseResult<Argument> result = new ParseResult<>();
 
@@ -1830,16 +2042,32 @@ public class RewriteParser extends Parser {
         return result.success(new Argument(argNameTokens, argTypeTokens, defaults, defaultCount, generics, argumentName, keywordArgument));
     }
 
+    /**
+     * End line.
+     *
+     * @param offset the offset
+     */
     public void endLine(int offset) {
         tokens.add(tokenIndex + offset, new Token(TokenType.INVISIBLE_NEW_LINE,
                 currentToken.getStartPosition().copy(), currentToken.getStartPosition().copy()));
         tokenCount++;
     }
 
+    /**
+     * Parse block parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseBlock() {
         return parseBlock(true);
     }
 
+    /**
+     * Parse block parse result.
+     *
+     * @param vLine the v line
+     * @return the parse result
+     */
     public ParseResult<Node> parseBlock(boolean vLine) {
         ParseResult<Node> result = new ParseResult<>();
         if (!currentToken.getType().equals(TokenType.LEFT_BRACE))
@@ -1865,6 +2093,11 @@ public class RewriteParser extends Parser {
 
     // If Parts
 
+    /**
+     * Parse if expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseIfExpression() {
         ParseResult<Node> result = new ParseResult<>();
         Pair<List<Case>, ElseCase> allCases = result.register(this.parseIfCases("if", true));
@@ -1876,6 +2109,13 @@ public class RewriteParser extends Parser {
         return result.success(new QueryNode(cases, elseCase));
     }
 
+    /**
+     * Parse if cases parse result.
+     *
+     * @param caseKeyword the case keyword
+     * @param parenthesis the parenthesis
+     * @return the parse result
+     */
     public ParseResult<Pair<List<Case>, ElseCase>> parseIfCases(String caseKeyword, boolean parenthesis) {
         ParseResult<Pair<List<Case>, ElseCase>> result = new ParseResult<>();
         List<Case> cases = new ArrayList<>();
@@ -1923,13 +2163,19 @@ public class RewriteParser extends Parser {
         return result.success(new Pair<>(cases, elseCase));
     }
 
+    /**
+     * Parse else if statement parse result.
+     *
+     * @param parenthesis the parenthesis
+     * @return the parse result
+     */
     public ParseResult<Pair<List<Case>, ElseCase>> parseElseIfStatement(boolean parenthesis) {
         ParseResult<Pair<List<Case>, ElseCase>> result = new ParseResult<>();
         List<Case> cases = new ArrayList<>();
         ElseCase elseCase;
 
         if (currentToken.matches(TokenType.KEYWORD, "elseIf")) {
-            Pair<List<Case>, ElseCase> allCases = result.register(this.parseElifExpression(parenthesis));
+            Pair<List<Case>, ElseCase> allCases = result.register(parseIfCases("elseIf", parenthesis));
             if (result.getLanguageError() != null) return result;
             cases = allCases.getFirst();
             elseCase = allCases.getLast();
@@ -1941,10 +2187,11 @@ public class RewriteParser extends Parser {
 
     }
 
-    public ParseResult<Pair<List<Case>, ElseCase>> parseElifExpression(boolean parenthesis) {
-        return parseIfCases("elseIf", parenthesis);
-    }
-
+    /**
+     * Else expr parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<ElseCase> elseExpr() {
         ParseResult<ElseCase> result = new ParseResult<>();
         ElseCase elseCase = null;
@@ -1971,6 +2218,11 @@ public class RewriteParser extends Parser {
 
     // Query
 
+    /**
+     * Kv parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> kv() {
         ParseResult<Node> result = new ParseResult<>();
 
@@ -1984,32 +2236,37 @@ public class RewriteParser extends Parser {
         return result.success(expr);
     }
 
+    /**
+     * Parse query expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseQueryExpression() {
         ParseResult<Node> result = new ParseResult<>();
         List<Case> cases = new ArrayList<>();
         ElseCase elseCase = null;
 
-        ParseExecutable getStatement = () -> {
+        NodeCallback statement = () -> {
             result.registerAdvancement();
             this.push();
             Node condition = result.register(parseComparisonExpression());
             if (result.getLanguageError() != null) return result;
-            Node expr_ = result.register(this.kv());
+            Node expr = result.register(this.kv());
             if (result.getLanguageError() != null) return result;
-            cases.add(new Case(condition, expr_, true));
+            cases.add(new Case(condition, expr, true));
             return null;
         };
 
         if (!currentToken.getType().equals(TokenType.QUESTION_MARK))
             return unexpected("'?'");
 
-        ParseResult<Node> r;
-        r = getStatement.execute();
-        if (r != null) return r;
+        ParseResult<Node> parseResult;
+        parseResult = statement.call();
+        if (parseResult != null) return parseResult;
 
         while (currentToken.getType().equals(TokenType.DOLLAR)) {
-            r = getStatement.execute();
-            if (r != null) return r;
+            parseResult = statement.call();
+            if (parseResult != null) return parseResult;
         }
 
         if (currentToken.getType().equals(TokenType.DOLLAR_UNDER_SCORE)) {
@@ -2031,6 +2288,11 @@ public class RewriteParser extends Parser {
 
     // Loops
 
+    /**
+     * Parse for loop parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseForLoop() {
         ParseResult<Node> result = new ParseResult<>();
 
@@ -2129,6 +2391,11 @@ public class RewriteParser extends Parser {
 
     }
 
+    /**
+     * Gets closing.
+     *
+     * @return the closing
+     */
     public ParseResult<Node> getClosing() {
         ParseResult<Node> result = new ParseResult<>();
         Node condition = result.register(this.parseExpression());
@@ -2141,6 +2408,11 @@ public class RewriteParser extends Parser {
         return result.success(condition);
     }
 
+    /**
+     * Parse while loop parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseWhileLoop() {
         ParseResult<Node> result = new ParseResult<>();
 
@@ -2160,6 +2432,11 @@ public class RewriteParser extends Parser {
         return result.success(condition);
     }
 
+    /**
+     * Parse do expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseDoExpression() {
         ParseResult<Node> result = new ParseResult<>();
 
@@ -2194,6 +2471,11 @@ public class RewriteParser extends Parser {
         return result.success(new WhileNode(condition, body, bracket, true));
     }
 
+    /**
+     * Parse while expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseWhileExpression() {
         ParseResult<Node> result = new ParseResult<>();
 
@@ -2233,6 +2515,11 @@ public class RewriteParser extends Parser {
 
     // Collections
 
+    /**
+     * Parse list expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseListExpression() {
         ParseResult<Node> result = new ParseResult<>();
         List<Node> elementNodes = new ArrayList<>();
@@ -2261,6 +2548,11 @@ public class RewriteParser extends Parser {
         return result.success(new ListNode(elementNodes, start, currentToken.getEndPosition().copy()));
     }
 
+    /**
+     * Parse dictionary expression parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseDictionaryExpression() {
         ParseResult<Node> result = new ParseResult<>();
         Map<Node, Node> dict = new HashMap<>();
@@ -2271,7 +2563,7 @@ public class RewriteParser extends Parser {
         result.registerAdvancement();
         this.push();
 
-        ParseExecutable kv = () -> {
+        NodeCallback callback = () -> {
             Node key = result.register(parseComparisonExpression());
             if (result.getLanguageError() != null) return result;
 
@@ -2281,17 +2573,17 @@ public class RewriteParser extends Parser {
             return null;
         };
 
-        ParseResult<Node> x;
+        ParseResult<Node> parseResult;
         if (!currentToken.getType().equals(TokenType.RIGHT_BRACE)) {
-            x = kv.execute();
-            if (x != null) return x;
+            parseResult = callback.call();
+            if (parseResult != null) return parseResult;
         }
 
         while (currentToken.getType().equals(TokenType.COMMA)) {
             this.push();
             result.registerAdvancement();
-            x = kv.execute();
-            if (x != null) return x;
+            parseResult = callback.call();
+            if (parseResult != null) return parseResult;
         }
         if (!currentToken.getType().equals(TokenType.RIGHT_BRACE))
             return unexpected("'}'");
@@ -2301,6 +2593,11 @@ public class RewriteParser extends Parser {
         return result.success(new MapNode(dict, start, currentToken.getEndPosition().copy()));
     }
 
+    /**
+     * Is catcher parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Boolean> isCatcher() {
         ParseResult<Boolean> result = new ParseResult<>();
         if (currentToken.getType() == TokenType.LEFT_BRACKET) {
@@ -2319,6 +2616,11 @@ public class RewriteParser extends Parser {
 
     // Executables
 
+    /**
+     * Parse inline function definition parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseInlineFunctionDefinition() {
         ParseResult<Node> result = new ParseResult<>();
 
@@ -2384,6 +2686,11 @@ public class RewriteParser extends Parser {
 
     }
 
+    /**
+     * Parse return definition parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<List<String>> parseReturnDefinition() {
         ParseResult<List<String>> result = new ParseResult<>();
 
@@ -2403,6 +2710,11 @@ public class RewriteParser extends Parser {
         return result.success(retype);
     }
 
+    /**
+     * Parse class definition parse result.
+     *
+     * @return the parse result
+     */
     public ParseResult<Node> parseClassDefinition() {
         ParseResult<Node> result = new ParseResult<>();
 
@@ -2619,19 +2931,36 @@ public class RewriteParser extends Parser {
 
     // --- utility methods ---
 
+    /**
+     * Push.
+     */
     public void push() {
         tokenIndex++;
         updateTokens();
     }
 
+    /**
+     * Update tokens.
+     */
     public void updateTokens() {
         if (0 <= tokenIndex && tokenIndex < tokenCount) currentToken = tokens.get(tokenIndex);
     }
 
+    /**
+     * Peek token.
+     *
+     * @param i the
+     * @return the token
+     */
     public Token peek(int i) {
         return 0 <= tokenIndex + i && tokenIndex + i < tokenCount ? tokens.get(tokenIndex + i) : null;
     }
 
+    /**
+     * Pull.
+     *
+     * @param amount the amount
+     */
     public void pull(int amount) {
         tokenIndex -= amount;
         updateTokens();
@@ -2642,22 +2971,28 @@ public class RewriteParser extends Parser {
         return String.valueOf(currentToken.getType());
     }
 
-    public boolean expect(final String expectedSymbol, final Runnable present) {
-        boolean valid = this.currentToken.getValue() != null && this.currentToken.getValue().equals(expectedSymbol);
-        if (valid)
-            present.run();
-
-        return valid;
-    }
-    public boolean expect(final String expectedSymbol) {
+    /**
+     * Expect boolean.
+     *
+     * @param expectedSymbol the expected symbol
+     * @return the boolean
+     */
+    public boolean tokenNotMatching(final String expectedSymbol) {
         boolean valid = this.currentToken.getValue() != null && this.currentToken.getValue().equals(expectedSymbol);
         if (valid) {
             this.push();
         }
 
-        return valid;
+        return !valid;
     }
 
+    /**
+     * Expect boolean.
+     *
+     * @param expectedSymbol the expected symbol
+     * @param present        the present
+     * @return the boolean
+     */
     public boolean expect(final TokenType expectedSymbol, final Runnable present) {
         boolean valid = this.currentToken.getValue() != null && this.currentToken.getType().equals(expectedSymbol);
         if (valid)
@@ -2666,27 +3001,39 @@ public class RewriteParser extends Parser {
         return valid;
     }
 
-    public boolean expect(final TokenType expectedSymbol) {
-        boolean valid = this.currentToken.getValue() != null && this.currentToken.getType().equals(expectedSymbol);
-        if (valid) {
-            this.push();
-        }
-
-        return valid;
-    }
-
+    /**
+     * Unexpected parse result.
+     *
+     * @param <T>            the type parameter
+     * @param expectedSymbol the expected symbol
+     * @return the parse result
+     */
     public <T> ParseResult<T> unexpected(final String expectedSymbol) {
         return new ParseResult<T>().failure(
                 LanguageException.expected(currentToken.getStartPosition(),
                         currentToken.getEndPosition(), "Expected %s but got %s".formatted(expectedSymbol, tokenFound())));
     }
 
+    /**
+     * Unmatched parse result.
+     *
+     * @param <T>            the type parameter
+     * @param expectedSymbol the expected symbol
+     * @return the parse result
+     */
     public <T> ParseResult<T> unmatched(final String expectedSymbol) {
         return new ParseResult<T>().failure(
                 LanguageException.expected(currentToken.getStartPosition(),
                         currentToken.getEndPosition(), "unmatched %s".formatted(expectedSymbol)));
     }
 
+    /**
+     * Match chain boolean.
+     *
+     * @param chain the chain
+     * @return the boolean
+     */
+    @SuppressWarnings("unused") // this is useful but not a current state
     public boolean matchChain(final TokenType... chain) {
         if (chain.length == 0)
             throw new RuntimeException("can't match empty pattern chain!");
@@ -2700,7 +3047,5 @@ public class RewriteParser extends Parser {
         return true;
 
     }
-
-    // --- utility methods ---
 
 }

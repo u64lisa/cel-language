@@ -2,11 +2,15 @@ package language.backend.compiler;
 
 import language.backend.compiler.asm.ASM64x86Compiler;
 import language.backend.compiler.bytecode.ByteCodeCompiler;
+import language.backend.compiler.llvm.LLVMCompiler;
 
 public enum CompileType {
 
     // asm
     ASM_64x86(ASM64x86Compiler.class, true),
+
+    // other
+    LLVM(LLVMCompiler.class, true),
 
     // ir
     CUSTOM_IR(ByteCodeCompiler.class, false);

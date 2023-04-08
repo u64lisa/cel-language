@@ -4,19 +4,19 @@ import java.util.*;
 
 public class HuffmanTree {
 
-	private static PriorityQueue<Node> tree;
+	private static PriorityQueue<HuffmanNode> tree;
 	private static Map<Short, int[]> huffCodes;
 
 	public HuffmanTree(Map<Short, Integer> m) {
 		// Make a tree of nodes
-		tree = new PriorityQueue<Node>();
-		Map<Short, Node> temp = new HashMap<Short, Node>();
+		tree = new PriorityQueue<HuffmanNode>();
+		Map<Short, HuffmanNode> temp = new HashMap<Short, HuffmanNode>();
 		m.forEach((k, v) -> {
-			tree.add(new Node(v, k));
-			temp.put(k, new Node(v, k));
+			tree.add(new HuffmanNode(v, k));
+			temp.put(k, new HuffmanNode(v, k));
 		});
 
-		tree.add(new Node(1, (short) 256));
+		tree.add(new HuffmanNode(1, (short) 256));
 		condenseList(tree);
 
 		// Create a map of the Huffman Codes
@@ -25,22 +25,22 @@ public class HuffmanTree {
 
 	}
 
-	public void condenseList(PriorityQueue<Node> ls) {
+	public void condenseList(PriorityQueue<HuffmanNode> ls) {
 		while (ls.size() >= 2) {
-			Node temp = condenseNodes(ls.poll(), ls.poll());
+			HuffmanNode temp = condenseNodes(ls.poll(), ls.poll());
 			ls.add(temp);
 		}
 	}
 
-	public Node condenseNodes(Node fore, Node aft) {
-		return new Node((fore.freq + aft.freq), fore, aft);
+	public HuffmanNode condenseNodes(HuffmanNode fore, HuffmanNode aft) {
+		return new HuffmanNode((fore.freq + aft.freq), fore, aft);
 	}
 
 	public void getCode() {
 		getCodeH(tree.peek(), new int[1]);
 	}
 
-	private void getCodeH(Node root, int[] ret) {
+	private void getCodeH(HuffmanNode root, int[] ret) {
 		if (root.datum != null) {
 			huffCodes.put(root.datum, Arrays.copyOf(ret, ret.length - 1));
 		}
@@ -79,7 +79,7 @@ public class HuffmanTree {
 
 	public void decode(BitInputStream in, BitOutputStream out) {
 		List<Integer> ret = new ArrayList<Integer>();
-		Node root = tree.peek();
+		HuffmanNode root = tree.peek();
 		for (int bit = 0; (bit = in.readBit()) != -1;) {
 			if (bit == 0) {
 				root = root.left;

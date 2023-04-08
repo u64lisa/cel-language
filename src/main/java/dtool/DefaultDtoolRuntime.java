@@ -17,6 +17,8 @@ import language.backend.compiler.CompileType;
 import language.backend.compiler.bytecode.ChunkBuilder;
 import language.backend.compiler.bytecode.ir.Compressor;
 import language.backend.compiler.bytecode.values.bytecode.ByteCode;
+import language.backend.precompiler.MacroPreProcessor;
+import language.backend.precompiler.PreProcessor;
 import language.frontend.lexer.Lexer;
 import language.frontend.lexer.token.Token;
 import language.frontend.parser.Parser;
@@ -51,6 +53,10 @@ public class DefaultDtoolRuntime extends DtoolRuntime {
     private final FileWalker walker = FileWalker.create();
     private final ProjectFolder projectFolder;
     private final DtoolConfig config;
+
+    private final PreProcessor[] preProcessors = {
+        new MacroPreProcessor()
+    };
 
     private Path sourcePath;
 
@@ -121,14 +127,18 @@ public class DefaultDtoolRuntime extends DtoolRuntime {
             if (!source.getAstNode().isPresent())
                 throw new RuntimeException(source.getPath() + " has no AST to parse!");
 
-            // todo process macros and such
-
             BodyNode body = (BodyNode) source.getAstNode()
                     .getValue().optimize();
 
             try {
                 Linker classImportService = new Linker(this, body.statements);
-                source.getAst().setValue(classImportService.getMergedTree());
+
+                List<Node> ast = classImportService.getMergedTree();
+                for (PreProcessor preProcessor : preProcessors) {
+                    ast = preProcessor.transform(ast);
+                }
+
+                source.getAst().setValue(ast);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

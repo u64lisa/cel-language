@@ -10,6 +10,8 @@ import java.util.List;
 
 public abstract class Parser {
 
+    private static final boolean DEBUG = true;
+
     public static final List<TokenType> TYPE_TOKENS = Arrays.asList(
             TokenType.IDENTIFIER,
             TokenType.KEYWORD,
@@ -31,7 +33,7 @@ public abstract class Parser {
     );
 
     public static Parser getParser(final List<Token> tokens) {
-        return new RewriteParser(tokens);
+        return DEBUG ? new RewriteParser(tokens) : new CelParser(tokens);
     }
 
     public abstract ParseResult<Node> parse();

@@ -21,7 +21,7 @@ class OwO {
 
 }
 
-object MethodHolder {
+class MethodHolder {
 
     method static printTest(test) -> any {
         println(test);
