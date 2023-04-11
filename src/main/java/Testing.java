@@ -12,7 +12,7 @@ public class Testing {
         args = new String[]{"test"};
 
         DtoolRuntime test = DtoolRuntime
-                .create(ProjectFolder.of("std"));
+                .create(ProjectFolder.of("source_testing"));
 
         test.init();
         // frontend
