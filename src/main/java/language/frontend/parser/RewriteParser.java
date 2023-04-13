@@ -1013,7 +1013,7 @@ public class RewriteParser extends Parser {
                     return unexpected("')'");
             }
             case STRING -> {
-                final Pair<String, Boolean> element = WrappedCast.cast(currentToken.getValue());
+                final Pair<String, Boolean> element = WrappedCast.cast(token.getValue());
                 if (element.getLast()) {
                     Node val = result.register(formatStringExpr());
                     if (result.getLanguageError() != null) return result;
@@ -1021,12 +1021,12 @@ public class RewriteParser extends Parser {
                 }
                 result.registerAdvancement();
                 this.push();
-                return result.success(new StringNode(currentToken));
+                return result.success(new StringNode(token));
             }
             case BOOLEAN -> {
                 result.registerAdvancement();
                 this.push();
-                return result.success(new BooleanNode(currentToken));
+                return result.success(new BooleanNode(token));
             }
             case IDENTIFIER -> {
                 result.registerAdvancement();
