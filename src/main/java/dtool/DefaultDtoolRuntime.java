@@ -23,6 +23,7 @@ import language.frontend.lexer.Lexer;
 import language.frontend.lexer.token.Token;
 import language.frontend.parser.Parser;
 import language.frontend.parser.nodes.Node;
+import language.frontend.parser.nodes.TreePrinter;
 import language.frontend.parser.nodes.expressions.BodyNode;
 import language.frontend.parser.results.ParseResult;
 import language.frontend.parser.units.Linker;
@@ -129,6 +130,7 @@ public class DefaultDtoolRuntime extends DtoolRuntime {
 
             BodyNode body = (BodyNode) source.getAstNode()
                     .getValue().optimize();
+            System.out.println(TreePrinter.print(body));
 
             try {
                 Linker classImportService = new Linker(this, body.statements);
