@@ -40,7 +40,7 @@ public final class I64Type extends PrimitiveType {
     public boolean equals(Object o) {
         // An int can be a float, but a float can't be an int.
         return o instanceof I64Type || o instanceof I32Type || o instanceof I16Type ||
-                o instanceof L64Type || o instanceof F64Type || o instanceof I8Type;
+                o instanceof L64Type || o instanceof F32Type || o instanceof I8Type;
     }
 
     @Override

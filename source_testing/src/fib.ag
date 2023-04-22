@@ -10,5 +10,5 @@ inline fib(x: l64) -> l64 {
 }
 println(fib(47));
 
-var time = |f64| (epoch() - start);
+var time = |f32| (epoch() - start);
 println(str(time) + " ms");

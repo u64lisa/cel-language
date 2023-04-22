@@ -8,7 +8,7 @@ typedef i32: int;
 typedef i64: double;
 typedef l64: long;
 
-typedef f64: float;
+typedef f32: float;
 
 inline test() -> double => 69.0;
 
@@ -26,8 +26,6 @@ class Main {
 
         println(value);
         println(value2);
-
-        OtherClass.test();
     }
 
 }

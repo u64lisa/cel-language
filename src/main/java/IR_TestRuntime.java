@@ -2,7 +2,7 @@ import dtool.DtoolRuntime;
 import dtool.io.ProjectFolder;
 import language.backend.compiler.CompileType;
 
-public class Testing {
+public class IR_TestRuntime {
 
     static {
         System.setProperty("lang.debug", "true");
@@ -20,13 +20,12 @@ public class Testing {
         test.processParser();
         // backend
         test.processPreCompiler();
-        //test.processCompiler(CompileType.CUSTOM_IR);
-        //test.processCompiler(CompileType.ASM_64x86);
-        test.processCompiler(CompileType.LLVM); // playground thingy
+        test.processCompiler(CompileType.CUSTOM_IR);
         // finish
         test.processFinalize();
 
-        //test.runTest(args);
+        test.runTest(args);
     }
+
 
 }

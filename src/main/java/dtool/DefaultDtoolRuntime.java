@@ -57,7 +57,7 @@ public class DefaultDtoolRuntime extends DtoolRuntime {
     private final DtoolConfig config;
 
     private final PreProcessor[] preProcessors = {
-        new MacroPreProcessor(), new TypeDefPreProcessor()
+        new MacroPreProcessor(), //new TypeDefPreProcessor()
     };
 
     private Path sourcePath;
@@ -115,6 +115,7 @@ public class DefaultDtoolRuntime extends DtoolRuntime {
             Parser parser = Parser.getParser(source.getTokenList());
 
             ParseResult<Node> result = parser.parse();
+
             if (result.getLanguageError() != null)
                 LOGGER.fail(source.getPath(), source.getSource(), result.getLanguageError());
 
@@ -131,7 +132,6 @@ public class DefaultDtoolRuntime extends DtoolRuntime {
 
             BodyNode body = (BodyNode) source.getAstNode()
                     .getValue().optimize();
-            System.out.println(TreePrinter.print(body));
 
             try {
                 Linker classImportService = new Linker(this, body.statements);

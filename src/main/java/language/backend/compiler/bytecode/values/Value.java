@@ -807,7 +807,7 @@ public class Value {
         if (isBool) {
             return "bool";
         } else if (isNumber) {
-            return (number == (long) number) ? "i32" : "f64";
+            return (number == (long) number) ? "i32" : "f32";
         } else if (isString) {
             return "String";
         } else if (isList) {

@@ -89,7 +89,7 @@ public enum TokenType {
             case APOSTROPH -> "'";
 
             case INTEGER -> "i32";
-            case FLOAT -> "f64";
+            case FLOAT -> "f32";
             case BYTE -> "i8";
             case LONG -> "l64";
             case DOUBLE -> "i64";

@@ -39,7 +39,7 @@ class Test {
 
         println(sub);
 
-        var time = |f64| (epoch() - start);
+        var time = |f32| (epoch() - start);
         println(str(time) + " ms");
     }
 

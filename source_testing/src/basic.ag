@@ -121,7 +121,7 @@ class Test {
 
         println("Method returns: " + returnType);
 
-        var time = |f64| (epoch() - start);
+        var time = |f32| (epoch() - start);
 
         println(str(time) + " ms");
     }

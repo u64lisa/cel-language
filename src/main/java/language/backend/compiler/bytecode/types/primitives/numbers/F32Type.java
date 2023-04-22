@@ -10,11 +10,11 @@ import java.util.Arrays;
 
 import static language.backend.compiler.bytecode.types.primitives.numbers.I32Type.VALID_OPS;
 
-public class F64Type extends PrimitiveType {
-    public static final F64Type INSTANCE = new F64Type();
+public class F32Type extends PrimitiveType {
+    public static final F32Type INSTANCE = new F32Type();
 
-    private F64Type() {
-        super("f64");
+    private F32Type() {
+        super("f32");
     }
 
     @Override
@@ -39,7 +39,7 @@ public class F64Type extends PrimitiveType {
     @Override
     public boolean equals(Object o) {
         // An int can be a float, but a float can't be an int.
-        return o instanceof F64Type || o instanceof I32Type || o instanceof I16Type || o instanceof I8Type;
+        return o instanceof F32Type || o instanceof I32Type || o instanceof I16Type || o instanceof I8Type;
     }
 
     @Override
