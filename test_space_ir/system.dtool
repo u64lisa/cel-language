@@ -1,7 +1,7 @@
 project.name = "your-project-name"
 project.version = "your-project-version"
 project.id = "your-id"
-project.main = "sample"
+project.main = "basic"
 
 
 project.tree = "project-tree"

@@ -1,8 +1,10 @@
+package testing;
+
 import dtool.DtoolRuntime;
 import dtool.io.ProjectFolder;
 import language.backend.compiler.CompileType;
 
-public class LLVM_TestRuntime {
+public class ASM_TestRuntime {
 
     static {
         System.setProperty("lang.debug", "true");
@@ -12,7 +14,7 @@ public class LLVM_TestRuntime {
         args = new String[]{"test"};
 
         DtoolRuntime test = DtoolRuntime
-                .create(ProjectFolder.of("std"));
+                .create(ProjectFolder.of("test_space_asm"));
 
         test.init();
         // frontend
@@ -20,7 +22,7 @@ public class LLVM_TestRuntime {
         test.processParser();
         // backend
         test.processPreCompiler();
-        test.processCompiler(CompileType.LLVM); // playground thingy
+        test.processCompiler(CompileType.ASM_64x86);
         // finish
         test.processFinalize();
     }

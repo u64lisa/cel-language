@@ -1,8 +1,10 @@
+package testing;
+
 import dtool.DtoolRuntime;
 import dtool.io.ProjectFolder;
 import language.backend.compiler.CompileType;
 
-public class IR_TestRuntime {
+public class LLVM_TestRuntime {
 
     static {
         System.setProperty("lang.debug", "true");
@@ -12,7 +14,7 @@ public class IR_TestRuntime {
         args = new String[]{"test"};
 
         DtoolRuntime test = DtoolRuntime
-                .create(ProjectFolder.of("std"));
+                .create(ProjectFolder.of("test_space_llvm"));
 
         test.init();
         // frontend
@@ -20,12 +22,9 @@ public class IR_TestRuntime {
         test.processParser();
         // backend
         test.processPreCompiler();
-        test.processCompiler(CompileType.CUSTOM_IR);
+        test.processCompiler(CompileType.LLVM); // playground thingy
         // finish
         test.processFinalize();
-
-        test.runTest(args);
     }
-
 
 }

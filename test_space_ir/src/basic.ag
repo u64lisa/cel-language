@@ -3,12 +3,6 @@ package "test";
 #main Test;
 #optimize;
 
-// local import
-//import "test.TestImport";
-
-// internal std import
-//import "std::concurrent::list";
-
 macro owo (
   { $A:ty, $B:ty } => { ($A, $B) };
 );

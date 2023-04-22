@@ -1,8 +1,10 @@
+package testing;
+
 import dtool.DtoolRuntime;
 import dtool.io.ProjectFolder;
 import language.backend.compiler.CompileType;
 
-public class ASM_TestRuntime {
+public class IR_TestRuntime {
 
     static {
         System.setProperty("lang.debug", "true");
@@ -12,7 +14,7 @@ public class ASM_TestRuntime {
         args = new String[]{"test"};
 
         DtoolRuntime test = DtoolRuntime
-                .create(ProjectFolder.of("std"));
+                .create(ProjectFolder.of("test_space_ir"));
 
         test.init();
         // frontend
@@ -20,9 +22,12 @@ public class ASM_TestRuntime {
         test.processParser();
         // backend
         test.processPreCompiler();
-        test.processCompiler(CompileType.ASM_64x86);
+        test.processCompiler(CompileType.CUSTOM_IR);
         // finish
         test.processFinalize();
+
+        test.runTest(args);
     }
+
 
 }

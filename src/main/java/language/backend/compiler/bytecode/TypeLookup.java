@@ -269,12 +269,13 @@ public class TypeLookup {
                 Type clazz = resolve(node.className);
                 String attr = node.attributeName.getValue().toString();
                 Type attrType = clazz.access(attr);
+
                 // If they are memory similar, then it is "this"
                 if (clazz == compiler.enclosingType) {
                     attrType = compiler.accessEnclosed(attr);
                 }
                 if (attrType == null) {
-                    compiler.error("Attribute", String.format("'%s' object has no attribute '%s'", clazz, attr));
+                    compiler.error("Attribute CS", String.format("'%s' object has no attribute '%s'", clazz, attr));
                 }
                 return attrType;
             }
@@ -284,7 +285,7 @@ public class TypeLookup {
                 String attr = node.name.getValue().toString();
                 Type oldAttr = compiler.accessEnclosed(attr);
                 if (oldAttr == null) {
-                    compiler.error("Attribute", String.format("'%s' object has no attribute '%s'", compiler.enclosingType, attr));
+                    compiler.error("Attribute AS", String.format("'%s' object has no attribute '%s'", compiler.enclosingType, attr));
                 } else if (!oldAttr.equals(newAttr) && oldAttr != Types.ANY) {
                     compiler.error("Type", String.format("Cannot assign '%s' to '%s'", newAttr, oldAttr));
                 }
@@ -295,7 +296,7 @@ public class TypeLookup {
                 String attr = node.name.getValue().toString();
                 Type type = compiler.accessEnclosed(attr);
                 if (type == null) {
-                    compiler.error("Attribute", String.format("'%s' object has no attribute '%s'", compiler.enclosingType, attr));
+                    compiler.error("Attribute ACC", String.format("'%s' object has no attribute '%s'", compiler.enclosingType, attr));
                 }
                 return type;
             }
