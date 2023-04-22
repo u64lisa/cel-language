@@ -19,6 +19,7 @@ import language.backend.compiler.bytecode.ir.Compressor;
 import language.backend.compiler.bytecode.values.bytecode.ByteCode;
 import language.backend.precompiler.MacroPreProcessor;
 import language.backend.precompiler.PreProcessor;
+import language.backend.precompiler.TestPreProcessor;
 import language.frontend.lexer.Lexer;
 import language.frontend.lexer.token.Token;
 import language.frontend.parser.Parser;
@@ -55,7 +56,7 @@ public class DefaultDtoolRuntime extends DtoolRuntime {
     private final DtoolConfig config;
 
     private final PreProcessor[] preProcessors = {
-        new MacroPreProcessor(),
+        new MacroPreProcessor(), new TestPreProcessor()
     };
 
     private Path sourcePath;
