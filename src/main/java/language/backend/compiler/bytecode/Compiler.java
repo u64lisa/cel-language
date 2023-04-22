@@ -357,7 +357,7 @@ public class Compiler {
 
         for (TypeDefinitionNode node : statements
                 .stream()
-                .filter(node -> node.getNodeType().equals(NodeType.TYPE_DEFINITION))
+               .filter(node -> node.getNodeType().equals(NodeType.TYPE_DEFINITION))
                 .map(node -> (TypeDefinitionNode) node)
                 .toList()) {
             String typeName = node.getType().asString();

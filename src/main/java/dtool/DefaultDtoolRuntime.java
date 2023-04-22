@@ -19,12 +19,10 @@ import language.backend.compiler.bytecode.ir.Compressor;
 import language.backend.compiler.bytecode.values.bytecode.ByteCode;
 import language.backend.precompiler.MacroPreProcessor;
 import language.backend.precompiler.PreProcessor;
-import language.backend.precompiler.TypeDefPreProcessor;
 import language.frontend.lexer.Lexer;
 import language.frontend.lexer.token.Token;
 import language.frontend.parser.Parser;
 import language.frontend.parser.nodes.Node;
-import language.frontend.parser.nodes.TreePrinter;
 import language.frontend.parser.nodes.expressions.BodyNode;
 import language.frontend.parser.results.ParseResult;
 import language.frontend.parser.units.Linker;
@@ -57,7 +55,7 @@ public class DefaultDtoolRuntime extends DtoolRuntime {
     private final DtoolConfig config;
 
     private final PreProcessor[] preProcessors = {
-        new MacroPreProcessor(), //new TypeDefPreProcessor()
+        new MacroPreProcessor(),
     };
 
     private Path sourcePath;
