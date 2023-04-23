@@ -1,0 +1,36 @@
+package "asm-test";
+
+import "importtest";
+
+#main Bootstrap;
+
+
+compiler<asm> export print {
+    "mov RAX, qword [RBP + 0x10]"
+    "mov qword [RBP - 0x8], RAX"
+
+    "mov RAX, qword [RBP + 0x18]"
+    "mov qword [RBP - 0x10], RAX"
+
+    "mov rsi, qword [RBP - 0x8]"
+    "mov rdx, qword [RBP - 0x10]"
+
+    "mov rdi, 1"
+    "mov rax, 1"
+    "syscall"
+};
+
+inline test(first: i32, second: i8, third: i64) -> void {
+    print("test");
+}
+
+
+class Bootstrap {
+
+    method static main(args: any) -> void {
+
+        println("Hello, World!");
+
+    }
+
+}

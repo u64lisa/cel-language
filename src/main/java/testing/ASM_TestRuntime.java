@@ -25,6 +25,7 @@ public class ASM_TestRuntime {
         test.processCompiler(CompileType.ASM_64x86);
         // finish
         test.processFinalize();
+
     }
 
 }

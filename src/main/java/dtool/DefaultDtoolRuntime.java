@@ -190,15 +190,45 @@ public class DefaultDtoolRuntime extends DtoolRuntime {
                     if (outFile.exists())
                         outFile.delete();
 
-                    try {
-                        final FileOutputStream fileOutputStream = new FileOutputStream(outFile);
-                        fileOutputStream.write(compiled);
-                        fileOutputStream.flush();
-                        fileOutputStream.close();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
+                    source.getDumpedByteCode().setValue(compiled);
+                }
 
+                String mainClass = config.getConfigTree().getProjectProperties()
+                        .getOrDefault("main", "?");
+
+                DynamicOptional<SourceFile> mainFile = new DynamicOptional<>();
+
+                for (SourceFile source : sources) {
+                    if (mainFile.isPresent())
+                        break;
+
+                    if (source.getFileName().equalsIgnoreCase(mainClass)) {
+                        mainFile.setValue(source);
+                    }
+                }
+
+                if (!mainFile.isPresent())
+                    throw new RuntimeException("Unable to find main class by name: " + mainClass);
+
+                final SourceFile mainEntry = mainFile.getValue();
+
+                try {
+                    final File outFile = new File(buildPath.toFile(), "out.asm");
+
+                    if (outFile.exists() && !outFile.delete())
+                        throw new IllegalStateException("can't delete file");
+
+                    if (!outFile.createNewFile())
+                        throw new IllegalStateException("can't create new file");
+
+                    Files.write(outFile.toPath(), mainEntry.getDumpedByteCode().getValue(), StandardOpenOption.WRITE);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    LOGGER.fail(mainEntry.getPath(), mainEntry.getSource(), new LanguageException(
+                            LanguageException.Type.COMPILER,
+                            "Internal",
+                            "Could not write to file"
+                    ));
                 }
             }
             case CUSTOM_IR -> {

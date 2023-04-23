@@ -57,8 +57,13 @@ public class SourceFile {
         suffix = SourceSuffix.fromSuffix(extension.get());
 
         try {
-            Scanner scanner = new Scanner(ioFile);
-            this.source = scanner.useDelimiter("\\A").next();
+            Scanner scanner = new Scanner(ioFile)
+                    .useDelimiter("\\A");
+
+            if (!scanner.hasNext())
+                return;
+
+            this.source = scanner.next();
             this.bytes = source.getBytes(StandardCharsets.UTF_8);
             this.length = bytes.length;
 

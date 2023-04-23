@@ -342,6 +342,16 @@ public class RewriteParser extends Parser {
         if (this.tokenNotMatching(">"))
             return this.unexpected(">");
 
+        if (this.tokenNotMatching("export"))
+            return this.unexpected("export");
+
+        if (!this.expect(TokenType.IDENTIFIER, () -> {}))
+            return unexpected("export name");
+
+        Token exportName = currentToken;
+        result.registerAdvancement();
+        this.push();
+
         if (this.tokenNotMatching("{"))
             return this.unexpected("{");
 
@@ -360,7 +370,7 @@ public class RewriteParser extends Parser {
         if (this.tokenNotMatching("}"))
             return this.unexpected("}");
 
-        return result.success(new CompilerNode(compilerType, stringTokens.toArray(new Token[0])));
+        return result.success(new CompilerNode(exportName, compilerType, stringTokens.toArray(new Token[0])));
     }
 
     /**

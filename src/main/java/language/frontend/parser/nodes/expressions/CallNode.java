@@ -63,4 +63,20 @@ public class CallNode extends Node {
     public String visualize() {
         return "call";
     }
+
+    public Node getNodeToCall() {
+        return nodeToCall;
+    }
+
+    public List<Node> getArgNodes() {
+        return argNodes;
+    }
+
+    public Map<String, Node> getKwargs() {
+        return kwargs;
+    }
+
+    public List<Token> getGenerics() {
+        return generics;
+    }
 }

@@ -76,4 +76,56 @@ public class InlineDeclareNode extends Node {
                 " " + name.getValue() : ""
         ) + "(" + argumentNames.stream().map(x -> x.getValue().toString()).collect(Collectors.joining(", ")) + ")";
     }
+
+    public Token getName() {
+        return name;
+    }
+
+    public List<Token> getArgumentNames() {
+        return argumentNames;
+    }
+
+    public Node getBody() {
+        return body;
+    }
+
+    public boolean isAutoreturn() {
+        return autoreturn;
+    }
+
+    public boolean isAsync() {
+        return async;
+    }
+
+    public List<Token> getArgumentTypes() {
+        return argumentTypes;
+    }
+
+    public List<Token> getGenerics() {
+        return generics;
+    }
+
+    public List<String> getReturnType() {
+        return returnType;
+    }
+
+    public List<Node> getDefaults() {
+        return defaults;
+    }
+
+    public int getDefaultCount() {
+        return defaultCount;
+    }
+
+    public boolean isCatcher() {
+        return catcher;
+    }
+
+    public String getArgname() {
+        return argname;
+    }
+
+    public String getKwargname() {
+        return kwargname;
+    }
 }

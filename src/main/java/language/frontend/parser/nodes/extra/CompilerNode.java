@@ -9,10 +9,12 @@ import java.util.List;
 
 public class CompilerNode extends Node {
 
+    private final Token name;
     private final Token type;
     private final Token[] code;
 
-    public CompilerNode(Token type, Token... code) {
+    public CompilerNode(Token name, Token type, Token... code) {
+        this.name = name;
         this.type = type;
         this.code = code;
 
@@ -31,7 +33,11 @@ public class CompilerNode extends Node {
 
     @Override
     public String visualize() {
-        return "compiler: " + type + " code-length: " + code.length;
+        return "name: " + name + " compiler: " + type + " code-length: " + code.length;
+    }
+
+    public Token getName() {
+        return name;
     }
 
     public Token getType() {

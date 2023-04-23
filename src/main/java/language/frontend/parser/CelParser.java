@@ -379,7 +379,7 @@ public class CelParser extends Parser {
         if (!this.expect("}"))
             return this.unexpected("}");
 
-        return result.success(new CompilerNode(compilerType, stringTokens.toArray(new Token[0])));
+        return result.success(new CompilerNode(compilerType, null, stringTokens.toArray(new Token[0])));
     }
 
     public ParseResult<Token> parseVar() {
