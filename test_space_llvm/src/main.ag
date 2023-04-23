@@ -1,22 +1,14 @@
 package "test";
 
-#main Main;
+#main Test;
 
-typedef i8: byte;
-typedef i16: short;
-typedef i32: int;
-typedef i64: double;
-typedef l64: long;
+inline test() -> f64 => 69.0;
 
-typedef f32: float;
-
-inline test() -> double => 69.0;
-
-inline test2() -> double {
+inline test2() -> f64 {
     return 69.0;
 }
 
-class Main {
+class Test {
 
     method static main(arguments: any) -> void {
         println("Hello, World!");

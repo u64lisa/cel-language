@@ -10,8 +10,10 @@ import language.frontend.lexer.token.Token;
 import language.frontend.lexer.token.TokenType;
 import language.frontend.parser.nodes.Node;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import language.frontend.parser.nodes.NodeType;
@@ -19,7 +21,7 @@ import language.frontend.parser.nodes.definitions.ClassDefNode;
 import language.frontend.parser.nodes.definitions.InlineDeclareNode;
 import language.frontend.parser.nodes.definitions.MethodDeclareNode;
 import language.frontend.parser.nodes.expressions.BodyNode;
-import language.frontend.parser.nodes.expressions.CallNode;
+import language.frontend.parser.nodes.expressions.UseNode;
 import language.frontend.parser.nodes.variables.TypeDefinitionNode;
 
 public class LLVMCompiler extends AbstractCompiler {
@@ -40,7 +42,7 @@ public class LLVMCompiler extends AbstractCompiler {
                 null, null
         ));
 
-        CompilerContext context = new CompilerContext(UUID.randomUUID().toString());
+        CompilerContext context = new CompilerContext(typeLookup, UUID.randomUUID().toString());
 
         for (TypeDefinitionNode node : ast
                 .stream()
@@ -59,52 +61,68 @@ public class LLVMCompiler extends AbstractCompiler {
             typeLookup.types.put(name, type);
         }
 
-        ast.removeIf(node -> node.getNodeType() == NodeType.TYPE_DEFINITION);
-        ast.stream().map(Node::optimize).forEach(node -> processSingletonNode(context, node));
+        ast.removeIf(node -> node.getNodeType() == NodeType.TYPE_DEFINITION || node.getNodeType() == NodeType.PACKAGE);
+        UseNode mainUseNode = ast.stream()
+                .filter(node -> node.getNodeType() == NodeType.USE)
+                .map(node -> (UseNode) node)
+                .filter(useNode -> Objects.equals(useNode.useToken.getValue().toString(), "main"))
+                .findFirst()
+                .orElse(null);
 
+        assert mainUseNode != null : "main class not found!";
+        String mainClass = mainUseNode.args.get(0).asString();
+
+        context.setMainClassName(mainClass);
+
+        ast.stream()
+                .map(Node::optimize)
+                .forEach(node -> processSingletonNode(context, null, node));
 
         context.print();
 
-        return new byte[0];
+        String content = "Test";
+
+        return content.getBytes(StandardCharsets.UTF_8);
     }
 
-    private void processSingletonNode(CompilerContext context, Node node) {
+    private void processSingletonNode(CompilerContext context, Node parent, Node node) {
         switch(node.getNodeType()) {
             case CLASS_DEFINITION -> {
-                processClassDefinition(context, (ClassDefNode) node.optimize());
+                ClassDefNode classDefNode = (ClassDefNode) node;
+                BodyNode bodyNode = (BodyNode) classDefNode.make;
+
+                List<MethodDeclareNode> methodDeclare = classDefNode.methods;
+
+                for (MethodDeclareNode methodDeclareNode : methodDeclare) {
+                    this.processSingletonNode(context,classDefNode,methodDeclareNode);
+                }
             }
-            case INLINE_DEFINITION -> {
+            case INLINE_DEFINITION -> { // global
                 InlineDeclareNode inlineDeclareNode  = (InlineDeclareNode) node;
-                System.out.println(inlineDeclareNode.name);
-            }
-        }
-    }
 
-    private void processClassDefinition(CompilerContext context, ClassDefNode classDefNode) {
-        for(Node child: classDefNode.getChildren()) {
-            switch (child.getNodeType()) {
-                case METHOD_DEFINITION -> {
-                    processMethodDeclareNode(context, (MethodDeclareNode) child.optimize());
+                Function function = new Function(context, null, inlineDeclareNode);
+            }
+            case METHOD_DEFINITION -> { // only possible in class
+                MethodDeclareNode methodDeclareNode = (MethodDeclareNode) node;
+
+                ClassDefNode classDefNode = null;
+                if(parent != null && parent.getNodeType() == NodeType.CLASS_DEFINITION) {
+                    classDefNode = (ClassDefNode) parent;
+                }
+
+                Function function = new Function(context, classDefNode, methodDeclareNode);
+
+                BodyNode bodyNode = (BodyNode) methodDeclareNode.body;
+                for (Node statement : bodyNode.statements) {
+                    processSingletonNode(context, parent, statement);
                 }
             }
-        }
-    }
 
-    private void processMethodDeclareNode(CompilerContext context, MethodDeclareNode methodDeclareNode) {
-        List<Node> children = methodDeclareNode.getChildren().get(0).getChildren();
-        for(Node child: children) {
-            switch(child.getNodeType()) {
-                case CALL -> {
-                    processCallNode(context, (CallNode) child.optimize());
-                }
+            case CALL -> {
+
             }
         }
     }
-
-    private void processCallNode(CompilerContext context, CallNode callNode) {
-        System.out.println(callNode.nodeToCall.getNodeType());
-    }
-
 
     void error(String type, String message) {
         LanguageException languageException = new LanguageException(

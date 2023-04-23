@@ -85,4 +85,68 @@ public class MethodDeclareNode extends Node {
         String prv = priv ? "private " : "public ";
         return prv + stc + "method " + name.getValue() + "(" + argumentNames.stream().map(x -> x.getValue().toString()).reduce("", (a, b) -> a + b + ",") + ")";
     }
+
+    public Token getName() {
+        return name;
+    }
+
+    public List<Token> getArgumentNames() {
+        return argumentNames;
+    }
+
+    public Node getBody() {
+        return body;
+    }
+
+    public boolean isAutoreturn() {
+        return autoreturn;
+    }
+
+    public boolean isAsync() {
+        return async;
+    }
+
+    public boolean isBin() {
+        return bin;
+    }
+
+    public List<Token> getArgumentTypes() {
+        return argumentTypes;
+    }
+
+    public List<Token> getGenerics() {
+        return generics;
+    }
+
+    public List<String> getReturnType() {
+        return returnType;
+    }
+
+    public List<Node> getDefaults() {
+        return defaults;
+    }
+
+    public int getDefaultCount() {
+        return defaultCount;
+    }
+
+    public boolean isCatcher() {
+        return catcher;
+    }
+
+    public boolean isStat() {
+        return stat;
+    }
+
+    public boolean isPriv() {
+        return priv;
+    }
+
+    public String getArgname() {
+        return argname;
+    }
+
+    public String getKwargname() {
+        return kwargname;
+    }
 }

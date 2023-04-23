@@ -4,6 +4,13 @@ import "importtest";
 
 #main Bootstrap;
 
+typedef i8: byte;
+typedef i16: short;
+typedef i32: int;
+typedef i64: double;
+typedef l64: long;
+
+typedef f32: float;
 
 compiler<asm> export print {
     "mov RAX, qword [RBP + 0x10]"

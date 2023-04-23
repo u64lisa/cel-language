@@ -38,6 +38,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class DefaultDtoolRuntime extends DtoolRuntime {
 
@@ -285,6 +286,30 @@ public class DefaultDtoolRuntime extends DtoolRuntime {
             }
 
         }
+    }
+
+    @Override
+    public void ast(Consumer<BodyNode> bodyNode) {
+        String mainClass = config.getConfigTree().getProjectProperties()
+                .getOrDefault("main", "?");
+
+        DynamicOptional<SourceFile> mainFile = new DynamicOptional<>();
+
+        for (SourceFile source : sources) {
+            if (mainFile.isPresent())
+                break;
+
+            if (source.getFileName().equalsIgnoreCase(mainClass)) {
+                mainFile.setValue(source);
+            }
+        }
+
+        if (!mainFile.isPresent())
+            throw new RuntimeException("Unable to find main class by name: " + mainClass);
+
+        final SourceFile mainEntry = mainFile.getValue();
+        BodyNode astBody = (BodyNode) mainEntry.getAstNode().getValue();
+        bodyNode.accept(astBody);
     }
 
     @Override

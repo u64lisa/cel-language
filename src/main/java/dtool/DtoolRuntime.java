@@ -3,8 +3,10 @@ package dtool;
 import dtool.config.DtoolConfig;
 import dtool.io.ProjectFolder;
 import language.backend.compiler.CompileType;
+import language.frontend.parser.nodes.expressions.BodyNode;
 
 import java.nio.file.Path;
+import java.util.function.Consumer;
 
 public abstract class DtoolRuntime {
 
@@ -45,4 +47,6 @@ public abstract class DtoolRuntime {
 
 
     public abstract Path getSourcePath();
+
+    public abstract void ast(Consumer<BodyNode> bodyNode);
 }

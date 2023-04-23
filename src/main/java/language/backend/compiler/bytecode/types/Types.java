@@ -17,6 +17,7 @@ public class Types {
     public static final L64Type LONG = PrimitiveTypes.LONG;
     public static final I16Type SHORT = PrimitiveTypes.SHORT;
     public static final F32Type FLOAT = PrimitiveTypes.FLOAT;
+    public static final F64Type F_DOUBLE = PrimitiveTypes.F_DOUBLE; // TODO resolve and rename I64Type
     public static final I8Type BYTE = PrimitiveTypes.BYTE;
     public static final I64Type DOUBLE = PrimitiveTypes.DOUBLE;
     public static final BooleanType BOOL = PrimitiveTypes.BOOL;

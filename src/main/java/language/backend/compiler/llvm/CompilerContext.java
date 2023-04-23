@@ -8,12 +8,17 @@ import static org.lwjgl.llvm.LLVMCore.LLVMDumpModule;
 import static org.lwjgl.llvm.LLVMCore.LLVMModuleCreateWithName;
 
 public class CompilerContext {
+    private String mainClassName;
+
+    private final LLVMTypeLookup typeLookup;
+
     public final String moduleName;
     public final long moduleHandle;
 
     public final HashMap<String, Function> staticFunctions;
 
-    public CompilerContext(final String moduleName) {
+    public CompilerContext(LLVMTypeLookup typeLookup, final String moduleName) {
+        this.typeLookup = typeLookup;
         try {
             LLVMCore.getLibrary();
         } catch (UnsatisfiedLinkError linkError) {
@@ -28,5 +33,17 @@ public class CompilerContext {
 
     public void print() {
         LLVMDumpModule(moduleHandle);
+    }
+
+    public LLVMTypeLookup getTypeLookup() {
+        return typeLookup;
+    }
+
+    public String getMainClassName() {
+        return mainClassName;
+    }
+
+    public void setMainClassName(String mainClassName) {
+        this.mainClassName = mainClassName;
     }
 }

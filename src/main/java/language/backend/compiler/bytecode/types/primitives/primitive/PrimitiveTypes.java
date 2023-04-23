@@ -15,6 +15,7 @@ public class PrimitiveTypes {
     public static final I16Type SHORT = I16Type.INSTANCE;
     public static final I8Type BYTE = I8Type.INSTANCE;
     public static final I64Type DOUBLE = I64Type.INSTANCE;
+    public static final F64Type F_DOUBLE = F64Type.INSTANCE;// TODO resolve and rename I64Type
 
     public static final BooleanType BOOL = BooleanType.INSTANCE;
     public static final StringType STRING = StringType.INSTANCE;
