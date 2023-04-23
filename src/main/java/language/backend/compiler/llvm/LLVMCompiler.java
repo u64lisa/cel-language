@@ -21,8 +21,11 @@ import language.frontend.parser.nodes.definitions.ClassDefNode;
 import language.frontend.parser.nodes.definitions.InlineDeclareNode;
 import language.frontend.parser.nodes.definitions.MethodDeclareNode;
 import language.frontend.parser.nodes.expressions.BodyNode;
+import language.frontend.parser.nodes.expressions.ReturnNode;
 import language.frontend.parser.nodes.expressions.UseNode;
+import language.frontend.parser.nodes.values.NumberNode;
 import language.frontend.parser.nodes.variables.TypeDefinitionNode;
+import org.lwjgl.llvm.LLVMCore;
 
 public class LLVMCompiler extends AbstractCompiler {
     public static final Logger SYSTEM_LOGGER = ImplLogger.getInstance();
@@ -80,12 +83,40 @@ public class LLVMCompiler extends AbstractCompiler {
 
         context.print();
 
-        String content = "Test";
+        String content = LLVMCore.LLVMPrintModuleToString(context.moduleHandle);
 
         return content.getBytes(StandardCharsets.UTF_8);
     }
 
-    private void processSingletonNode(CompilerContext context, Node parent, Node node) {
+    private void processFunction(final CompilerContext context, final ClassDefNode parent, final Node node) {
+
+        List<Node> children;
+
+        boolean inlineFunction;
+
+        if(node.getChildren().get(0).getNodeType() == NodeType.BODY) {
+            children = node.getChildren().get(0).getChildren();
+            inlineFunction = false;
+        } else {
+            children = node.getChildren();
+            inlineFunction = true;
+        }
+
+        Function function = new Function(context, parent, node, inlineFunction);
+
+        if(children.size() == 0) {
+            return;
+        }
+
+        function.createBody();
+        context.generatingState = new GeneratingState(function, function.getEntryBlockHandle());
+
+        for(Node child: children) {
+            processSingletonNode(context, node, child);
+        }
+    }
+
+    private void processSingletonNode(final CompilerContext context, final Node parent, final Node node) {
         switch(node.getNodeType()) {
             case CLASS_DEFINITION -> {
                 ClassDefNode classDefNode = (ClassDefNode) node;
@@ -98,9 +129,7 @@ public class LLVMCompiler extends AbstractCompiler {
                 }
             }
             case INLINE_DEFINITION -> { // global
-                InlineDeclareNode inlineDeclareNode  = (InlineDeclareNode) node;
-
-                Function function = new Function(context, null, inlineDeclareNode);
+                processFunction(context, null, node);
             }
             case METHOD_DEFINITION -> { // only possible in class
                 MethodDeclareNode methodDeclareNode = (MethodDeclareNode) node;
@@ -110,21 +139,26 @@ public class LLVMCompiler extends AbstractCompiler {
                     classDefNode = (ClassDefNode) parent;
                 }
 
-                Function function = new Function(context, classDefNode, methodDeclareNode);
+                processFunction(context, classDefNode, node);
+            }
+            case NUMBER -> {
+                NumberNode numberNode = (NumberNode) node;
+                String typeName = LLVMCompilerUtils.returnTypeName(parent);
 
-                BodyNode bodyNode = (BodyNode) methodDeclareNode.body;
-                for (Node statement : bodyNode.statements) {
-                    processSingletonNode(context, parent, statement);
+                if(context.generatingState.function.isInlineFunction) {
+                    //Instant return
+                    long constant = LLVMCompilerUtils.buildConstant(context.getTypeLookup(), numberNode, typeName);
+                    LLVMCore.LLVMBuildRet(context.generatingState.function.getBuilderHandle(), constant);
                 }
             }
 
-            case CALL -> {
-
+            default -> {
+                System.out.println(node.getNodeType());
             }
         }
     }
 
-    void error(String type, String message) {
+    void error(final String type, final String message) {
         LanguageException languageException = new LanguageException(
                 LanguageException.Type.COMPILER,
                 type + " Error", message

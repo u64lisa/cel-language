@@ -16,8 +16,9 @@ public class CompilerContext {
     public final long moduleHandle;
 
     public final HashMap<String, Function> staticFunctions;
+    public GeneratingState generatingState;
 
-    public CompilerContext(LLVMTypeLookup typeLookup, final String moduleName) {
+    public CompilerContext(final LLVMTypeLookup typeLookup, final String moduleName) {
         this.typeLookup = typeLookup;
         try {
             LLVMCore.getLibrary();
@@ -43,7 +44,7 @@ public class CompilerContext {
         return mainClassName;
     }
 
-    public void setMainClassName(String mainClassName) {
+    public void setMainClassName(final String mainClassName) {
         this.mainClassName = mainClassName;
     }
 }

@@ -2,7 +2,7 @@ package "test";
 
 #main Test;
 
-inline test() -> f64 => 69.0;
+inline test() -> i64 => 64;
 
 inline test2() -> f64 {
     return 69.0;

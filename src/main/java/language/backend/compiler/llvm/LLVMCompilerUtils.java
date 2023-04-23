@@ -4,7 +4,9 @@ import language.frontend.lexer.token.Token;
 import language.frontend.parser.nodes.Node;
 import language.frontend.parser.nodes.definitions.InlineDeclareNode;
 import language.frontend.parser.nodes.definitions.MethodDeclareNode;
+import language.frontend.parser.nodes.values.NumberNode;
 import org.lwjgl.PointerBuffer;
+import org.lwjgl.llvm.LLVMCore;
 import org.lwjgl.system.MemoryStack;
 
 import static org.lwjgl.llvm.LLVMCore.*;
@@ -85,5 +87,35 @@ public class LLVMCompilerUtils {
             case "f64" -> LLVMDoubleType();
             default -> LLVMPointerType(LLVMVoidType(), 0);
         };
+    }
+
+    public static String returnTypeName(final Node node) {
+        switch (node.getNodeType()) {
+            case INLINE_DEFINITION -> {
+                InlineDeclareNode inlineDeclareNode = (InlineDeclareNode) node;
+                return inlineDeclareNode.returnType.get(0);
+            }
+            case METHOD_DEFINITION -> {
+                MethodDeclareNode methodDeclareNode = (MethodDeclareNode) node;
+                return methodDeclareNode.returnType.get(0);
+            }
+            default -> {
+                return null;
+            }
+        }
+    }
+
+    public static long buildConstant(final LLVMTypeLookup typeLookup, final NumberNode numberNode, final String type) {
+        long llvmType = llvmTypeFromString(typeLookup, type);
+        boolean isFloating = llvmType == LLVMFloatType() || llvmType == LLVMDoubleType();
+        long result;
+        if(!isFloating) {
+            result = LLVMCore.LLVMConstInt(llvmType, (long)numberNode.val, false);
+        } else {
+            //TODO: implement float constant
+            result = 0;
+        }
+
+        return result;
     }
 }

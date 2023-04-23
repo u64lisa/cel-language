@@ -10,6 +10,7 @@ public class Function {
     public final CompilerContext context;
     public final ClassDefNode classDefNode;
     public final Node node;
+    public final boolean isInlineFunction;
     public final String name;
     public final long functionTypeHandle;
     public final long functionHandle;
@@ -24,7 +25,7 @@ public class Function {
         return entryBlockHandle;
     }
 
-    private static String computeFunctionName(Node node) {
+    private static String computeFunctionName(final Node node) {
         return switch (node.getNodeType()) {
             case METHOD_DEFINITION -> {
                 MethodDeclareNode methodDeclareNode = (MethodDeclareNode) node;
@@ -38,18 +39,19 @@ public class Function {
         };
     }
 
-    public Function(final CompilerContext context, final ClassDefNode classDefNode, final Node node) {
+    public Function(final CompilerContext context, final ClassDefNode classDefNode, final Node node, boolean isInlineFunction) {
         this.context = context;
         this.classDefNode = classDefNode;
         this.node = node;
+        this.isInlineFunction = isInlineFunction;
 
         String nodeName = computeFunctionName(node);
         String name = null;
         if(classDefNode == null) {
-            name = nodeName;
+            name = String.format("%s_%s", context.moduleName, nodeName);
         } else {
-            name = String.format(nodeName.equals("main") ? "main" : String.format("%s_%s",
-                    classDefNode.className.asString(), nodeName));
+            name = String.format(nodeName.equals("main") ? "main" : String.format("%s_%s_%s",
+                    context.moduleName, classDefNode.className.asString(), nodeName));
         }
 
         this.name = name;
@@ -65,5 +67,6 @@ public class Function {
     public void createBody() {
         builderHandle = LLVMCreateBuilder();
         entryBlockHandle = LLVMAppendBasicBlock(functionHandle, "entry");
+        LLVMPositionBuilderAtEnd(builderHandle, entryBlockHandle);
     }
 }
