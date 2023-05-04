@@ -13,10 +13,6 @@ public class DefaultFileWalker extends FileWalker {
         final Path root = folder.getAsPath();
         final File rootFile = root.toFile();
 
-        if (rootFile.exists() && rootFile.isDirectory()) {
-            return;
-        }
-
         checkSingleton(root);
 
         for (String subFolder : structure) {
